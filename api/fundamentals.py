@@ -1,8 +1,17 @@
-"""Fetches the fundamentals each valuation formula needs, via yfinance."""
+"""Vercel Python serverless function: GET /api/fundamentals?ticker=AAPL
+
+Deliberately a minimal, standalone duplicate of src/stockval/data.py's fetch logic
+(not an import of that package) — see the plan for why. Returns raw fundamentals
+only; no valuation math happens here, that all lives in the TypeScript app.
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+import os
+from dataclasses import asdict, dataclass
+from http.server import BaseHTTPRequestHandler
+from urllib.parse import parse_qs, urlparse
 
 import yfinance as yf
 
@@ -26,13 +35,13 @@ class Fundamentals:
     sector: str | None
     industry: str | None
     dividend_yield: float | None
-    # Only computed for tickers classified as banks (see is_bank_industry) — not a
-    # meaningful concept outside banking, and requires extra statement fetches we
-    # don't want to pay for on every ticker.
+    # Only computed for tickers classified as banks (see _is_bank) — not a
+    # meaningful concept outside banking, and requires extra statement fetches
+    # we don't want to pay for on every ticker.
     net_interest_margin: float | None
 
 
-def is_bank_industry(sector: str | None, industry: str | None) -> bool:
+def _is_bank(sector: str | None, industry: str | None) -> bool:
     return sector == "Financial Services" and bool(industry) and "bank" in industry.lower()
 
 
@@ -43,12 +52,12 @@ def _latest_statement_value(frame, row_label: str) -> float | None:
     if frame is None or frame.empty or row_label not in frame.index:
         return None
     value = frame.loc[row_label, frame.columns[0]]
-    if value is None or value != value:  # NaN check without importing math/numpy
+    if value is None or value != value:  # NaN check without importing math/pandas
         return None
     return float(value)
 
 
-def _net_interest_margin(t: yf.Ticker) -> float | None:
+def _net_interest_margin(t: "yf.Ticker") -> float | None:
     """Approximation: latest annual Net Interest Income / latest annual Total
     Assets. Real bank disclosures divide by *average* earning assets over the
     period, which isn't available from these summary statements — this is a
@@ -73,8 +82,6 @@ def fetch_fundamentals(ticker: str) -> Fundamentals:
     if total_debt is not None and total_cash is not None:
         net_debt = total_debt - total_cash
 
-    free_cash_flow = info.get("freeCashflow")
-
     eps_growth_pct = info.get("earningsGrowth")
     if eps_growth_pct is not None:
         eps_growth_pct *= 100
@@ -92,7 +99,7 @@ def fetch_fundamentals(ticker: str) -> Fundamentals:
         if dividend_rate is not None and price:
             dividend_yield = dividend_rate / price
 
-    net_interest_margin = _net_interest_margin(t) if is_bank_industry(sector, industry) else None
+    net_interest_margin = _net_interest_margin(t) if _is_bank(sector, industry) else None
 
     return Fundamentals(
         ticker=ticker,
@@ -106,7 +113,7 @@ def fetch_fundamentals(ticker: str) -> Fundamentals:
         pe_ratio=info.get("trailingPE"),
         eps_growth_pct=eps_growth_pct,
         ebitda=info.get("ebitda"),
-        free_cash_flow=free_cash_flow,
+        free_cash_flow=info.get("freeCashflow"),
         roe=info.get("returnOnEquity"),
         price_to_book=info.get("priceToBook"),
         sector=sector,
@@ -114,3 +121,38 @@ def fetch_fundamentals(ticker: str) -> Fundamentals:
         dividend_yield=dividend_yield,
         net_interest_margin=net_interest_margin,
     )
+
+
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self) -> None:
+        expected_token = os.environ.get("FUNDAMENTALS_INTERNAL_TOKEN")
+        if expected_token and self.headers.get("x-internal-token") != expected_token:
+            self._json(403, {"error": "forbidden"})
+            return
+
+        query = parse_qs(urlparse(self.path).query)
+        ticker = (query.get("ticker") or [None])[0]
+        if not ticker:
+            self._json(400, {"error": "missing ticker query param"})
+            return
+        ticker = ticker.strip().upper()
+
+        try:
+            data = fetch_fundamentals(ticker)
+        except Exception as exc:  # yfinance/network failure
+            self._json(502, {"error": f"failed to fetch fundamentals for {ticker}", "detail": str(exc)})
+            return
+
+        if data.price is None and data.market_cap is None:
+            self._json(404, {"error": f"unknown or delisted ticker: {ticker}"})
+            return
+
+        self._json(200, asdict(data))
+
+    def _json(self, status: int, payload: dict) -> None:
+        body = json.dumps(payload).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
