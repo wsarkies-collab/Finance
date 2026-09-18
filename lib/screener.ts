@@ -71,6 +71,11 @@ export function isBankIndustry(sector: string | null, industry: string | null): 
   return sector === "Financial Services" && !!industry && industry.toLowerCase().includes("bank");
 }
 
+/** True if a lower raw value is more attractive for this metric (see LOWER_IS_BETTER above). */
+export function isLowerBetterMetric(metric: string): boolean {
+  return LOWER_IS_BETTER.has(metric as MetricName);
+}
+
 function marginOfSafety(fairValue: number | null, price: number | null): number | null {
   if (fairValue === null || !price) {
     return null;

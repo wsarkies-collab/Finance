@@ -1,17 +1,9 @@
+"use client";
+
+import { useState, type ReactNode } from "react";
 import type { ValuationReport } from "@/lib/screener";
-
-function fmt(value: number | null): string {
-  return value !== null ? value.toFixed(2) : "n/a";
-}
-
-function fmtPct(value: number | null): string {
-  return value !== null ? `${(value * 100).toFixed(1)}%` : "n/a";
-}
-
-function signClass(value: number | null): string {
-  if (value === null) return "muted";
-  return value >= 0 ? "positive" : "negative";
-}
+import { fmt, fmtPct, signClass } from "@/lib/format";
+import { TickerDetailModal } from "./TickerDetailModal";
 
 /** DCF/PEG/EV-EBITDA/FCF-yield are structurally unreliable for banks (see lib/screener.ts) —
  * when one of those is missing on a bank row, mark it distinctly from an ordinary data gap. */
@@ -39,11 +31,16 @@ function GeneralMetricCell({
 
 export interface RankedTableProps {
   reports: ValuationReport[];
-  /** Optional per-row trailing cell, e.g. a remove-from-watchlist button. */
-  renderRowExtra?: (report: ValuationReport) => React.ReactNode;
+  /** Optional per-row trailing cell, e.g. a remove-from-watchlist button. A plain
+   * ticker -> pre-rendered-node map, NOT a render-prop function — this component is a
+   * Client Component, and a Server Component parent (e.g. app/watchlist/page.tsx) cannot
+   * pass a plain function across that boundary, only serializable data/JSX. */
+  rowActionsByTicker?: Record<string, ReactNode>;
 }
 
-export function RankedTable({ reports, renderRowExtra }: RankedTableProps) {
+export function RankedTable({ reports, rowActionsByTicker }: RankedTableProps) {
+  const [selected, setSelected] = useState<ValuationReport | null>(null);
+
   if (reports.length === 0) {
     return <p className="muted">No results yet — search a ticker above.</p>;
   }
@@ -70,7 +67,7 @@ export function RankedTable({ reports, renderRowExtra }: RankedTableProps) {
             <th>Div Yld%</th>
             <th>NIM%</th>
             <th>Score</th>
-            {renderRowExtra ? <th /> : null}
+            {rowActionsByTicker ? <th /> : null}
           </tr>
         </thead>
         <tbody>
@@ -83,14 +80,16 @@ export function RankedTable({ reports, renderRowExtra }: RankedTableProps) {
                   <td colSpan={generalColumnCount} className="muted">
                     couldn&apos;t resolve this ticker
                   </td>
-                  {renderRowExtra ? <td>{renderRowExtra(r)}</td> : null}
+                  {rowActionsByTicker ? <td>{rowActionsByTicker[r.ticker]}</td> : null}
                 </tr>
               );
             }
             return (
               <tr key={r.ticker}>
                 <td>
-                  {r.ticker}
+                  <button type="button" className="ticker-link" onClick={() => setSelected(r)}>
+                    {r.ticker}
+                  </button>
                   {r.isBank ? (
                     <span className="badge" title={r.industry ?? "Bank"}>
                       Bank
@@ -110,7 +109,7 @@ export function RankedTable({ reports, renderRowExtra }: RankedTableProps) {
                 <td>{fmt(r.dividendYieldPct)}</td>
                 <td>{fmt(r.netInterestMarginPct)}</td>
                 <td>{fmt(r.compositeScore)}</td>
-                {renderRowExtra ? <td>{renderRowExtra(r)}</td> : null}
+                {rowActionsByTicker ? <td>{rowActionsByTicker[r.ticker]}</td> : null}
               </tr>
             );
           })}
@@ -124,6 +123,7 @@ export function RankedTable({ reports, renderRowExtra }: RankedTableProps) {
           estimate — see note below) are used instead.
         </p>
       ) : null}
+      {selected ? <TickerDetailModal report={selected} onClose={() => setSelected(null)} /> : null}
     </div>
   );
 }

@@ -8,7 +8,7 @@ import type { Fundamentals } from "./types";
 const MAX_TICKERS_PER_REQUEST = 25;
 const DEFAULT_CACHE_TTL_MINUTES = 30;
 
-interface FundamentalsCacheRow {
+export interface FundamentalsCacheRow {
   ticker: string;
   fetched_at: string;
   price: number | null;
@@ -30,7 +30,7 @@ interface FundamentalsCacheRow {
   net_interest_margin: number | null;
 }
 
-function rowToFundamentals(row: FundamentalsCacheRow): Fundamentals {
+export function rowToFundamentals(row: FundamentalsCacheRow): Fundamentals {
   return {
     ticker: row.ticker,
     price: row.price,
