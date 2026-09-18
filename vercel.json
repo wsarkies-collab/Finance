@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/fundamentals.py": {
+      "runtime": "python3.12",
+      "maxDuration": 15
+    }
+  }
+}
