@@ -1,11 +1,9 @@
 {
   "functions": {
     "api/fundamentals.py": {
-      "runtime": "python3.12",
       "maxDuration": 15
     },
     "api/price_history.py": {
-      "runtime": "python3.12",
       "maxDuration": 15
     }
   }
