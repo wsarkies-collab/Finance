@@ -18,6 +18,18 @@ number.
 
 Plus FCF yield (free cash flow / market cap) as a sixth cross-check.
 
+### Banks
+
+DCF, PEG, EV/EBITDA, and FCF yield don't work for banks — a bank's GAAP
+operating cash flow is dominated by loan/deposit movements, not a coherent
+"free cash flow" signal (verified against JPMorgan's actual 10-K filings).
+Tickers classified as banks (Yahoo sector "Financial Services" + "bank" in
+the industry name) get P/E, P/B, ROE%, dividend yield%, and net interest
+margin% (NIM, approximated as latest annual Net Interest Income / Total
+Assets — a screener-level estimate, not the precise average-earning-assets
+figure banks report themselves) instead. The CLI marks a bank row's ticker
+and its inapplicable columns with `*` and prints a footnote explaining why.
+
 ## Setup
 
 ```bash

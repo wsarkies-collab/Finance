@@ -23,6 +23,44 @@ class Fundamentals:
     free_cash_flow: float | None
     roe: float | None
     price_to_book: float | None
+    sector: str | None
+    industry: str | None
+    dividend_yield: float | None
+    # Only computed for tickers classified as banks (see is_bank_industry) — not a
+    # meaningful concept outside banking, and requires extra statement fetches we
+    # don't want to pay for on every ticker.
+    net_interest_margin: float | None
+
+
+def is_bank_industry(sector: str | None, industry: str | None) -> bool:
+    return sector == "Financial Services" and bool(industry) and "bank" in industry.lower()
+
+
+def _latest_statement_value(frame, row_label: str) -> float | None:
+    """Most recent (first) column's value for `row_label` in a yfinance statement
+    DataFrame, or None if the row is missing or NaN (yfinance leaves plenty of gaps,
+    especially for non-US listings)."""
+    if frame is None or frame.empty or row_label not in frame.index:
+        return None
+    value = frame.loc[row_label, frame.columns[0]]
+    if value is None or value != value:  # NaN check without importing math/numpy
+        return None
+    return float(value)
+
+
+def _net_interest_margin(t: yf.Ticker) -> float | None:
+    """Approximation: latest annual Net Interest Income / latest annual Total
+    Assets. Real bank disclosures divide by *average* earning assets over the
+    period, which isn't available from these summary statements — this is a
+    reasonable screener-level estimate, not a precise regulatory figure."""
+    try:
+        net_interest_income = _latest_statement_value(t.financials, "Net Interest Income")
+        total_assets = _latest_statement_value(t.balance_sheet, "Total Assets")
+    except Exception:
+        return None
+    if net_interest_income is None or not total_assets:
+        return None
+    return net_interest_income / total_assets
 
 
 def fetch_fundamentals(ticker: str) -> Fundamentals:
@@ -41,6 +79,21 @@ def fetch_fundamentals(ticker: str) -> Fundamentals:
     if eps_growth_pct is not None:
         eps_growth_pct *= 100
 
+    sector = info.get("sector")
+    industry = info.get("industry")
+
+    # info["dividendYield"] has shipped as both a fraction and a plain percentage
+    # number across yfinance versions — trailingAnnualDividendYield has stayed a
+    # fraction, so prefer it and fall back to deriving one from the dividend rate.
+    dividend_yield = info.get("trailingAnnualDividendYield")
+    if dividend_yield is None:
+        dividend_rate = info.get("dividendRate")
+        price = info.get("currentPrice") or info.get("regularMarketPrice")
+        if dividend_rate is not None and price:
+            dividend_yield = dividend_rate / price
+
+    net_interest_margin = _net_interest_margin(t) if is_bank_industry(sector, industry) else None
+
     return Fundamentals(
         ticker=ticker,
         price=info.get("currentPrice") or info.get("regularMarketPrice"),
@@ -56,4 +109,8 @@ def fetch_fundamentals(ticker: str) -> Fundamentals:
         free_cash_flow=free_cash_flow,
         roe=info.get("returnOnEquity"),
         price_to_book=info.get("priceToBook"),
+        sector=sector,
+        industry=industry,
+        dividend_yield=dividend_yield,
+        net_interest_margin=net_interest_margin,
     )
