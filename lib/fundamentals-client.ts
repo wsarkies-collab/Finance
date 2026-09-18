@@ -18,6 +18,10 @@ function wireToFundamentals(wire: FundamentalsWire): Fundamentals {
     freeCashFlow: wire.free_cash_flow,
     roe: wire.roe,
     priceToBook: wire.price_to_book,
+    sector: wire.sector,
+    industry: wire.industry,
+    dividendYield: wire.dividend_yield,
+    netInterestMargin: wire.net_interest_margin,
   };
 }
 

@@ -13,6 +13,11 @@ export interface Fundamentals {
   freeCashFlow: number | null;
   roe: number | null;
   priceToBook: number | null;
+  sector: string | null;
+  industry: string | null;
+  dividendYield: number | null;
+  /** Only ever non-null for tickers classified as banks — see isBankIndustry in lib/screener.ts. */
+  netInterestMargin: number | null;
 }
 
 /** Wire shape returned by api/fundamentals.py (snake_case, mirrors the Python dataclass). */
@@ -31,4 +36,8 @@ export interface FundamentalsWire {
   free_cash_flow: number | null;
   roe: number | null;
   price_to_book: number | null;
+  sector: string | null;
+  industry: string | null;
+  dividend_yield: number | null;
+  net_interest_margin: number | null;
 }

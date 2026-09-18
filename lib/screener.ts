@@ -19,6 +19,12 @@ export const DEFAULT_GROWTH_RATE = 0.05;
 export interface ValuationReport {
   ticker: string;
   price: number | null;
+  sector: string | null;
+  industry: string | null;
+  /** True for banks (sector "Financial Services" + "bank" in industry) — see isBankIndustry.
+   * DCF/PEG/EV-EBITDA/FCF-yield are structurally unreliable for banks (see peRatio etc. below
+   * for the metrics used instead), so the UI treats this as a hint to explain those n/a's. */
+  isBank: boolean;
   dcfValue: number | null;
   dcfMarginOfSafety: number | null;
   grahamValue: number | null;
@@ -27,12 +33,20 @@ export interface ValuationReport {
   evEbitda: number | null;
   fcfYieldPct: number | null;
   pbRoeScore: number | null;
+  /** Raw pass-throughs, always populated when Yahoo has them (not bank-specific) — shown
+   * alongside pbRoeScore for banks, where P/B-vs-ROE alone is a less familiar framing. */
+  peRatio: number | null;
+  priceToBook: number | null;
+  roePct: number | null;
+  dividendYieldPct: number | null;
+  /** Only ever non-null for banks — see Fundamentals.netInterestMargin. */
+  netInterestMarginPct: number | null;
   compositeScore: number | null;
 }
 
 /** Metrics where a lower raw value means "cheaper" get their percentile rank flipped
  * so that, after flipping, higher always means more attractive across every metric. */
-const LOWER_IS_BETTER = new Set<MetricName>(["peg", "evEbitda"]);
+const LOWER_IS_BETTER = new Set<MetricName>(["peg", "evEbitda", "peRatio"]);
 
 const METRIC_NAMES = [
   "dcfMarginOfSafety",
@@ -41,9 +55,21 @@ const METRIC_NAMES = [
   "evEbitda",
   "fcfYieldPct",
   "pbRoeScore",
+  // Bank-relevant additions. peRatio/dividendYieldPct are populated for most tickers, not
+  // just banks, but netInterestMarginPct is null for everyone else, so it naturally drops
+  // out of the ranking (see percentileRanks) for non-bank tickers rather than needing a
+  // separate bank-only ranking path. priceToBook/roePct are deliberately NOT ranked here —
+  // pbRoeScore already combines them, and ranking both would double-count book value.
+  "peRatio",
+  "dividendYieldPct",
+  "netInterestMarginPct",
 ] as const;
 
 type MetricName = (typeof METRIC_NAMES)[number];
+
+export function isBankIndustry(sector: string | null, industry: string | null): boolean {
+  return sector === "Financial Services" && !!industry && industry.toLowerCase().includes("bank");
+}
 
 function marginOfSafety(fairValue: number | null, price: number | null): number | null {
   if (fairValue === null || !price) {
@@ -68,6 +94,9 @@ export function scoreTicker(
   return {
     ticker: f.ticker,
     price: f.price,
+    sector: f.sector,
+    industry: f.industry,
+    isBank: isBankIndustry(f.sector, f.industry),
     dcfValue,
     dcfMarginOfSafety: marginOfSafety(dcfValue, f.price),
     grahamValue,
@@ -76,6 +105,11 @@ export function scoreTicker(
     evEbitda: evToEbitda(f.enterpriseValue, f.ebitda),
     fcfYieldPct: fcfY !== null ? fcfY * 100 : null,
     pbRoeScore: quality.score,
+    peRatio: f.peRatio,
+    priceToBook: f.priceToBook,
+    roePct: f.roe !== null ? f.roe * 100 : null,
+    dividendYieldPct: f.dividendYield !== null ? f.dividendYield * 100 : null,
+    netInterestMarginPct: f.netInterestMargin !== null ? f.netInterestMargin * 100 : null,
     compositeScore: null,
   };
 }

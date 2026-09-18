@@ -87,6 +87,10 @@ main {
   cursor: default;
 }
 
+.table-scroll {
+  overflow-x: auto;
+}
+
 table.ranked {
   width: 100%;
   border-collapse: collapse;
@@ -134,4 +138,27 @@ form.watchlist-row button {
   cursor: pointer;
   padding: 0;
   font-size: 0.85rem;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.bank-na {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.bank-footnote {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
 }

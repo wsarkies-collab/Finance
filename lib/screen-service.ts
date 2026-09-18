@@ -24,6 +24,10 @@ interface FundamentalsCacheRow {
   free_cash_flow: number | null;
   roe: number | null;
   price_to_book: number | null;
+  sector: string | null;
+  industry: string | null;
+  dividend_yield: number | null;
+  net_interest_margin: number | null;
 }
 
 function rowToFundamentals(row: FundamentalsCacheRow): Fundamentals {
@@ -42,6 +46,10 @@ function rowToFundamentals(row: FundamentalsCacheRow): Fundamentals {
     freeCashFlow: row.free_cash_flow,
     roe: row.roe,
     priceToBook: row.price_to_book,
+    sector: row.sector,
+    industry: row.industry,
+    dividendYield: row.dividend_yield,
+    netInterestMargin: row.net_interest_margin,
   };
 }
 
@@ -61,6 +69,10 @@ function fundamentalsToRow(f: Fundamentals): Omit<FundamentalsCacheRow, "fetched
     free_cash_flow: f.freeCashFlow,
     roe: f.roe,
     price_to_book: f.priceToBook,
+    sector: f.sector,
+    industry: f.industry,
+    dividend_yield: f.dividendYield,
+    net_interest_margin: f.netInterestMargin,
   };
 }
 
@@ -68,6 +80,9 @@ function emptyReport(ticker: string): ValuationReport {
   return {
     ticker,
     price: null,
+    sector: null,
+    industry: null,
+    isBank: false,
     dcfValue: null,
     dcfMarginOfSafety: null,
     grahamValue: null,
@@ -76,6 +91,11 @@ function emptyReport(ticker: string): ValuationReport {
     evEbitda: null,
     fcfYieldPct: null,
     pbRoeScore: null,
+    peRatio: null,
+    priceToBook: null,
+    roePct: null,
+    dividendYieldPct: null,
+    netInterestMarginPct: null,
     compositeScore: null,
   };
 }
