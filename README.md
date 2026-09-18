@@ -71,9 +71,20 @@ real needs outbound internet access to `query1.finance.yahoo.com` /
 
 The same formulas are also available as a public web dashboard: a Next.js app
 (`app/`, `lib/`, `components/`) deployed on Vercel, backed by Supabase for
-caching and per-user watchlists, plus one small Vercel Python function
-(`api/fundamentals.py`) that does the actual `yfinance` fetch. The CLI above
-is untouched by any of this — it's an additive layer in the same repo.
+caching and per-user watchlists, plus two small Vercel Python functions
+(`api/fundamentals.py`, `api/price_history.py`) that do the actual `yfinance`
+fetches. The CLI above is untouched by any of this — it's an additive layer
+in the same repo.
+
+Clicking a ticker in the results table opens a popup explaining each formula
+and comparing the company to cached industry peers. A "Future Projections"
+button lets you pick a searched company and see a 5-year price chart with
+four toggleable series: DDM, Target Price (EPS × future P/E), DCF, and real
+analyst consensus targets (12-month, so only plotted at Year 1). All three
+computed models share a capped growth-rate assumption (`lib/projections.ts`)
+— raw trailing EPS growth is not safe to compound over 5 years (it broke the
+Gordon Growth Model's math outright for some real tickers tested during
+development).
 
 ### One-time setup
 

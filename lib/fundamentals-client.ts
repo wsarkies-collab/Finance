@@ -22,10 +22,17 @@ function wireToFundamentals(wire: FundamentalsWire): Fundamentals {
     industry: wire.industry,
     dividendYield: wire.dividend_yield,
     netInterestMargin: wire.net_interest_margin,
+    dividendRate: wire.dividend_rate,
+    targetMeanPrice: wire.target_mean_price,
+    targetLowPrice: wire.target_low_price,
+    targetHighPrice: wire.target_high_price,
+    numberOfAnalystOpinions: wire.number_of_analyst_opinions,
   };
 }
 
-function fundamentalsBaseUrl(): string {
+/** Shared by any client calling one of the Python serverless functions (fundamentals, price
+ * history, ...) — they all live behind the same base URL and internal-token gate. */
+export function pythonFunctionBaseUrl(): string {
   if (process.env.PYTHON_FUNDAMENTALS_BASE_URL) {
     return process.env.PYTHON_FUNDAMENTALS_BASE_URL;
   }
@@ -37,7 +44,7 @@ function fundamentalsBaseUrl(): string {
 
 /** Fetches one ticker's raw fundamentals from the Python serverless function. Throws on failure. */
 export async function fetchFundamentals(ticker: string): Promise<Fundamentals> {
-  const url = `${fundamentalsBaseUrl()}/api/fundamentals?ticker=${encodeURIComponent(ticker)}`;
+  const url = `${pythonFunctionBaseUrl()}/api/fundamentals?ticker=${encodeURIComponent(ticker)}`;
   const headers: Record<string, string> = {};
   if (process.env.FUNDAMENTALS_INTERNAL_TOKEN) {
     headers["x-internal-token"] = process.env.FUNDAMENTALS_INTERNAL_TOKEN;

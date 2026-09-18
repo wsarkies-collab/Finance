@@ -27,6 +27,11 @@ def _fundamentals(ticker, **overrides):
         industry="Consumer Electronics",
         dividend_yield=0.02,
         net_interest_margin=None,
+        dividend_rate=2.0,
+        target_mean_price=110.0,
+        target_low_price=90.0,
+        target_high_price=130.0,
+        number_of_analyst_opinions=10,
     )
     base.update(overrides)
     return Fundamentals(**base)

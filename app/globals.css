@@ -248,3 +248,191 @@ form.watchlist-row button {
   margin: 0.3rem 0 0;
   font-size: 0.8rem;
 }
+
+.future-projections-btn {
+  padding: 0.6rem 1.2rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 1.5rem;
+}
+
+.projections-panel {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.projections-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.projections-controls select {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.95rem;
+}
+
+.chart-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.assumptions-note {
+  font-size: 0.8rem;
+  margin-top: 1rem;
+}
+
+.projection-chart {
+  width: 100%;
+  height: auto;
+}
+
+.chart-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.chart-toggles label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chart-toggles input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.chart-toggles .swatch {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.chart-toggles .dot-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.swatch-history {
+  background: #888888;
+}
+
+.swatch-target {
+  background: #16a34a;
+}
+
+.swatch-dcf {
+  background: #2563eb;
+}
+
+.swatch-analyst {
+  background: #ea580c;
+}
+
+.legend-ddm {
+  background: #000000;
+}
+
+@media (prefers-color-scheme: dark) {
+  .legend-ddm {
+    background: #ffffff;
+  }
+}
+
+.chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.chart-axis-label {
+  fill: var(--muted);
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.chart-today-line {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.proj-line-history {
+  fill: none;
+  stroke: #888888;
+  stroke-width: 2;
+}
+
+.proj-line-ddm {
+  fill: none;
+  stroke: #000000;
+  stroke-width: 2.5;
+}
+
+.proj-line-target {
+  fill: none;
+  stroke: #16a34a;
+  stroke-width: 2.5;
+}
+
+.proj-line-dcf {
+  fill: none;
+  stroke: #2563eb;
+  stroke-width: 2.5;
+}
+
+.proj-dot-history {
+  fill: #888888;
+}
+
+.proj-dot-ddm {
+  fill: #000000;
+}
+
+.proj-dot-target {
+  fill: #16a34a;
+}
+
+.proj-dot-dcf {
+  fill: #2563eb;
+}
+
+.proj-dot-analyst {
+  fill: #ea580c;
+  stroke: var(--bg);
+  stroke-width: 1.5;
+}
+
+.range-whisker {
+  stroke: #ea580c;
+  stroke-width: 1.5;
+  opacity: 0.7;
+}
+
+@media (prefers-color-scheme: dark) {
+  .proj-line-ddm {
+    stroke: #ffffff;
+  }
+  .proj-dot-ddm {
+    fill: #ffffff;
+  }
+}

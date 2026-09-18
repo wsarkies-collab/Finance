@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ValuationReport } from "@/lib/screener";
+import { FutureProjectionsButton } from "./FutureProjectionsButton";
 import { RankedTable } from "./RankedTable";
 
 export function TickerSearchForm() {
@@ -49,6 +50,7 @@ export function TickerSearchForm() {
       </form>
       {error ? <p className="error-banner">{error}</p> : null}
       <RankedTable reports={reports} />
+      {reports.length > 0 ? <FutureProjectionsButton reports={reports} /> : null}
     </>
   );
 }

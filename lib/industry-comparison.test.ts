@@ -23,6 +23,11 @@ function fundamentals(ticker: string, overrides: Partial<Fundamentals> = {}): Fu
     industry: "Other Industrial Metals & Mining",
     dividendYield: 0.02,
     netInterestMargin: null,
+    dividendRate: 2.0,
+    targetMeanPrice: 110.0,
+    targetLowPrice: 90.0,
+    targetHighPrice: 130.0,
+    numberOfAnalystOpinions: 10,
     ...overrides,
   };
 }
