@@ -163,6 +163,130 @@ form.watchlist-row button {
   font-size: 0.8rem;
 }
 
+.ticker-search-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 1.5rem;
+}
+
+.ticker-picker {
+  position: relative;
+}
+
+.ticker-picker input {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 1rem;
+}
+
+.ticker-dropdown {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  margin-top: 0.25rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.ticker-dropdown button {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0.8rem;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.ticker-dropdown button:last-child {
+  border-bottom: none;
+}
+
+.ticker-dropdown button:hover,
+.ticker-dropdown button:focus-visible {
+  background: var(--border);
+}
+
+.ticker-dropdown .exch {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.ticker-search-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0.4rem 0 0.75rem;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.3rem 0.25rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.chip .chip-exch {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.chip button {
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0.1rem 0.3rem;
+}
+
+.chip button:hover {
+  color: var(--negative);
+}
+
+.ticker-search-form > button[type="submit"] {
+  align-self: flex-start;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.ticker-search-form > button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .ticker-link {
   background: none;
   border: none;

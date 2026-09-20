@@ -71,10 +71,22 @@ real needs outbound internet access to `query1.finance.yahoo.com` /
 
 The same formulas are also available as a public web dashboard: a Next.js app
 (`app/`, `lib/`, `components/`) deployed on Vercel, backed by Supabase for
-caching and per-user watchlists, plus two small Vercel Python functions
-(`api/fundamentals.py`, `api/price_history.py`) that do the actual `yfinance`
-fetches. The CLI above is untouched by any of this — it's an additive layer
-in the same repo.
+caching and per-user watchlists, plus three small Vercel Python functions
+(`api/fundamentals.py`, `api/price_history.py`, `api/ticker_search.py`) that
+do the actual `yfinance` fetches. The CLI above is untouched by any of this —
+it's an additive layer in the same repo.
+
+Many companies list on more than one exchange under overlapping tickers (BHP
+trades as `BHP` on the NYSE, `BHP.AX` on the ASX, and `BHP.L` on the LSE), so
+the search box on the dashboard resolves what you type against Yahoo's own
+search (`yfinance.Search`, `api/ticker_search.py`) and offers every matching
+exchange listing in a dropdown rather than guessing one. Picking a listing
+adds it as a ticker chip with its exchange shown; typing an exact symbol and
+pressing Enter still works exactly as before, so knowing the suffix you want
+is never blocked on the search returning. Searching by company name finds
+every exchange more reliably than a bare ticker does — Yahoo's relevance
+ranking can drop a real listing (e.g. searching `RIO` alone omits `RIO.AX`)
+that the full name surfaces.
 
 Clicking a ticker in the results table opens a popup explaining each formula
 and comparing the company to cached industry peers. A "Future Projections"

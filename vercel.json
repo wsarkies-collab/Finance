@@ -5,6 +5,9 @@
     },
     "api/price_history.py": {
       "maxDuration": 15
+    },
+    "api/ticker_search.py": {
+      "maxDuration": 15
     }
   }
 }
