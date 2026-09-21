@@ -113,6 +113,12 @@ export function PortfolioCalculatorForm() {
   const portfolioBeta = analysis ? analysis.tickers.reduce((s, t) => s + t.weight * t.beta, 0) : 0;
   const sharpe = analysis && analysis.portfolioVol > 0 ? (portfolioExpectedReturn - rf) / analysis.portfolioVol : 0;
   const ewSharpe = analysis && analysis.ewVol > 0 ? (ewExpectedReturn - rf) / analysis.ewVol : 0;
+  const riskReduction = analysis && analysis.ewVol > 0 ? (analysis.ewVol - analysis.portfolioVol) / analysis.ewVol : 0;
+
+  function nameFor(ticker: string): string | null {
+    const chip = chips.find((c) => c.symbol === ticker);
+    return chip && chip.name !== chip.symbol ? chip.name : null;
+  }
 
   return (
     <>
@@ -196,24 +202,60 @@ export function PortfolioCalculatorForm() {
 
       {analysis && !analysis.error ? (
         <>
-          <p className="muted" style={{ marginBottom: "0.5rem" }}>
-            {analysis.overlapWeeks} weeks of overlapping price history used
-            {analysis.droppedTickers.length > 0 ? ` — no data for: ${analysis.droppedTickers.join(", ")}` : ""}
-          </p>
+          <h2 style={{ fontSize: "1.05rem" }}>Minimum-variance allocation</h2>
+
+          <div className="stat-grid">
+            <div className="stat-tile">
+              <span className="stat-label">Portfolio volatility</span>
+              <span className="stat-value">{fmtPct(analysis.portfolioVol)}</span>
+              <span className="stat-sub">annualized, at these weights</span>
+            </div>
+            <div className="stat-tile">
+              <span className="stat-label">Equal-weight volatility</span>
+              <span className="stat-value">{fmtPct(analysis.ewVol)}</span>
+              <span className="stat-sub">same tickers, 1/N each</span>
+            </div>
+            <div className="stat-tile">
+              <span className="stat-label">Risk reduction</span>
+              <span className="stat-value">
+                {riskReduction >= 0 ? "-" : "+"}
+                {fmtPct(Math.abs(riskReduction))}
+              </span>
+              <span className="stat-sub">vs. equal-weight</span>
+            </div>
+            <div className="stat-tile">
+              <span className="stat-label">Data used</span>
+              <span className="stat-value">{analysis.overlapWeeks} weeks</span>
+              <span className="stat-sub">shared trading weeks</span>
+            </div>
+          </div>
+          {analysis.droppedTickers.length > 0 ? (
+            <p className="muted" style={{ marginBottom: "0.5rem" }}>
+              No data for: {analysis.droppedTickers.join(", ")}
+            </p>
+          ) : null}
+
           <div className="table-scroll">
             <table className="ranked">
               <thead>
                 <tr>
                   <th>Ticker</th>
                   <th>Weight</th>
-                  <th>Amount</th>
-                  <th>Volatility</th>
+                  <th>Invest</th>
+                  <th>Ann. volatility</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.ticker}>
-                    <td>{r.ticker}</td>
+                    <td>
+                      <strong>{r.ticker}</strong>
+                      {nameFor(r.ticker) ? (
+                        <div className="muted" style={{ fontSize: "0.78rem" }}>
+                          {nameFor(r.ticker)}
+                        </div>
+                      ) : null}
+                    </td>
                     <td>
                       <div className="composite-cell">
                         <div className="composite-bar">
@@ -223,25 +265,32 @@ export function PortfolioCalculatorForm() {
                       </div>
                     </td>
                     <td>${fmtMoney(r.amount)}</td>
-                    <td>{fmtPct(r.individualVol)}</td>
+                    <td>
+                      <span className={`vol-badge${r.individualVol >= 0.4 ? " elevated" : ""}`}>
+                        {fmtPct(r.individualVol)}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="muted" style={{ marginTop: "0.5rem" }}>
-            Portfolio volatility {fmtPct(analysis.portfolioVol)} vs. equal-weight volatility {fmtPct(analysis.ewVol)}
-          </p>
 
           <div className="projections-panel">
             <h2 style={{ fontSize: "1.05rem" }}>Risk-adjusted return — Sharpe ratio</h2>
             <p className="muted metric-explanation">
-              The Sharpe ratio measures how much extra return a portfolio earns for each unit of risk it takes on,
-              above a risk-free rate: (portfolio return − risk-free rate) ÷ portfolio volatility. Expected return per
-              ticker is estimated via CAPM (E(R) = risk-free rate + beta × equity risk premium), using each ticker's
-              real trailing beta against its home-market index. The weights above were chosen purely to minimize
-              risk — the optimizer never looked at expected return, so this Sharpe ratio describes the trade-off
-              that resulted, not something the optimizer targeted.
+              The Sharpe ratio measures how much extra return a portfolio earns for each unit of risk (volatility) it
+              takes on, above what you&apos;d get holding something essentially risk-free: (portfolio return − risk-free
+              rate) ÷ portfolio volatility. A higher number means you&apos;re being compensated better for the risk
+              you&apos;re carrying: as a rough rule of thumb, below 1 is considered weak, 1–2 is decent, and above 2
+              is very good — though what counts as &quot;good&quot; varies a lot by asset class and time period.
+            </p>
+            <p className="muted metric-explanation">
+              Expected return is estimated via the Capital Asset Pricing Model (CAPM) — the direct academic
+              extension of Markowitz&apos;s own framework: E(R) = risk-free rate + beta × equity risk premium, where
+              beta is each ticker&apos;s real trailing beta against its home index (S&amp;P 500 or ASX 200) and the
+              equity risk premium is the extra return investors demand for holding stocks over a risk-free asset.
+              Both inputs below are editable assumptions, not live data.
             </p>
             <div className="projections-controls">
               <label>
@@ -265,25 +314,50 @@ export function PortfolioCalculatorForm() {
                 />
               </label>
             </div>
-            <p className="muted">
-              Portfolio expected return {fmtPct(portfolioExpectedReturn)}, beta {portfolioBeta.toFixed(2)}
-            </p>
-            <p>
-              Sharpe ratio: <strong>{sharpe.toFixed(2)}</strong> (equal-weight: {ewSharpe.toFixed(2)})
-            </p>
+
+            <div className="stat-grid">
+              <div className="stat-tile">
+                <span className="stat-label">Portfolio return (CAPM)</span>
+                <span className="stat-value">{fmtPct(portfolioExpectedReturn)}</span>
+                <span className="stat-sub">weighted at MV weights</span>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">Portfolio beta</span>
+                <span className="stat-value">{portfolioBeta.toFixed(2)}</span>
+                <span className="stat-sub">weighted at MV weights</span>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">Sharpe ratio</span>
+                <span className="stat-value">{sharpe.toFixed(2)}</span>
+                <span className="stat-sub">this portfolio, at MV weights</span>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">Equal-weight Sharpe</span>
+                <span className="stat-value">{ewSharpe.toFixed(2)}</span>
+                <span className="stat-sub">same tickers, 1/N each</span>
+              </div>
+            </div>
+
             <div className="table-scroll">
               <table className="ranked">
                 <thead>
                   <tr>
                     <th>Ticker</th>
                     <th>Beta</th>
-                    <th>Expected return</th>
+                    <th>CAPM expected return</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.ticker}>
-                      <td>{r.ticker}</td>
+                      <td>
+                        <strong>{r.ticker}</strong>
+                        {nameFor(r.ticker) ? (
+                          <div className="muted" style={{ fontSize: "0.78rem" }}>
+                            {nameFor(r.ticker)}
+                          </div>
+                        ) : null}
+                      </td>
                       <td>{r.beta.toFixed(2)}</td>
                       <td>{fmtPct(r.expectedReturn)}</td>
                     </tr>
@@ -291,6 +365,45 @@ export function PortfolioCalculatorForm() {
                 </tbody>
               </table>
             </div>
+
+            <p className="muted metric-explanation" style={{ marginTop: "0.75rem" }}>
+              <strong>Important caveat:</strong> the weights above were chosen purely to minimize risk — the
+              optimizer never looked at expected return at all, CAPM or otherwise. This Sharpe ratio describes the
+              return/risk trade-off that resulted from minimizing risk, not something the optimizer targeted.
+              CAPM&apos;s own well-documented weakness is that beta (sensitivity to a single market index) only
+              explains part of real-world stock returns — it&apos;s a more principled estimate than a raw trailing
+              average, but still an estimate, not a forecast.
+            </p>
+          </div>
+
+          <div className="section" style={{ borderBottom: "none", marginBottom: 0, marginTop: "1.5rem" }}>
+            <h2 style={{ fontSize: "1.05rem" }}>How this is calculated</h2>
+            <p className="muted" style={{ fontSize: "0.85rem", maxWidth: "68ch" }}>
+              This solves the classic Markowitz global minimum-variance problem: find portfolio weights that
+              minimize portfolio variance, subject to weights summing to 100% and no short-selling (every weight ≥
+              0). It does not use expected-return forecasts — this is deliberately the &quot;minimize risk&quot;
+              corner of the efficient frontier, not the &quot;best risk-adjusted return&quot; corner.
+            </p>
+            <ul className="muted" style={{ fontSize: "0.85rem", maxWidth: "68ch" }}>
+              <li>
+                The covariance matrix is built from real weekly returns (fetched live for whichever tickers you
+                pick, up to 5 years of history), annualized.
+              </li>
+              <li>
+                Returns are aligned by actual shared calendar date, not just trailing position — otherwise a mixed
+                US/ASX portfolio would silently compare the wrong weeks against each other, since those markets
+                trade on different holiday calendars.
+              </li>
+              <li>
+                Solved numerically via projected gradient descent onto the simplex (long-only, fully invested) —
+                there&apos;s no closed-form solution once the no-short-selling constraint is added.
+              </li>
+              <li>
+                Beta is computed the same way, against each ticker&apos;s home-market benchmark (S&amp;P 500 or ASX
+                200 by ticker suffix).
+              </li>
+              <li>Every calculation here is live — nothing is cached or pre-fetched, so it reflects current prices each time you calculate.</li>
+            </ul>
           </div>
         </>
       ) : null}
