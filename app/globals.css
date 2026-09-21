@@ -679,6 +679,77 @@ form.watchlist-row button {
   max-width: 65ch;
 }
 
+.mode-toggle,
+.market-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.mode-toggle button,
+.market-toggle button {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border: none;
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.mode-toggle button + button,
+.market-toggle button + button {
+  border-left: 1px solid var(--border);
+}
+
+.mode-toggle button.active,
+.market-toggle button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.sector-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.sector-btn {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.sector-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.sector-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.sector-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sector-count {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
 .info-btn {
   display: inline-flex;
   align-items: center;
