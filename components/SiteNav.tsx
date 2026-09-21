@@ -26,6 +26,9 @@ export function SiteNav() {
         <button type="button" className="brand-btn" onClick={() => setOpen(true)} aria-label="Open menu">
           stockval
         </button>
+        <Link href="/login" className="nav-login">
+          Log in
+        </Link>
       </nav>
 
       <div className={`sidebar-backdrop${open ? " open" : ""}`} onClick={() => setOpen(false)} aria-hidden={!open}>
