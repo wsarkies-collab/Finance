@@ -98,6 +98,19 @@ computed models share a capped growth-rate assumption (`lib/projections.ts`)
 Gordon Growth Model's math outright for some real tickers tested during
 development).
 
+A separate **Momentum & quality** tab (`/momentum`) offers a short-to-medium-term
+screen, distinct from the long-term valuation screener above: it ranks
+searched tickers by 12-month price momentum (skipping the most recent month,
+per Novy-Marx 2012), proximity to their 52-week high, and this app's existing
+ROE/P·E quality-value fundamentals — the specific combination a research pass
+on trading-strategy evidence found actually holds up out of sample, unlike
+single-indicator signals like RSI or MACD (see `lib/momentum.ts` for the
+math and citations). It rebalances roughly monthly rather than daily, and a
+"Signal" (New entrant / Held / Dropped out) derived from rank changes stands
+in for a buy/sell trigger without adding an unvalidated technical indicator.
+Every ticker's figures are one click away from a plain-English explanation
+of what they mean and why, via `components/MomentumExplainerModal.tsx`.
+
 ### One-time setup
 
 1. **Supabase**: open your project's SQL editor and run `supabase/schema.sql`

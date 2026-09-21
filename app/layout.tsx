@@ -15,6 +15,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <a href="/" className="brand">
             stockval
           </a>
+          <a href="/momentum">Momentum</a>
           <a href="/watchlist">Watchlist</a>
           <a href="/login">Log in</a>
         </nav>

@@ -7,6 +7,7 @@
   --accent: #0f62fe;
   --positive: #0a7d3a;
   --negative: #b3261e;
+  --warning: #a35a00;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,6 +19,7 @@
     --accent: #6ea8fe;
     --positive: #4ade80;
     --negative: #f87171;
+    --warning: #f2a93b;
   }
 }
 
@@ -559,4 +561,179 @@ form.watchlist-row button {
   .proj-dot-ddm {
     fill: #ffffff;
   }
+}
+
+.momentum-intro,
+.momentum-note {
+  font-size: 0.85rem;
+  max-width: 65ch;
+}
+
+.info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 0.65rem;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.info-btn:hover,
+.info-btn:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.qv-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.qv-pct {
+  font-weight: 600;
+}
+
+.qv-raw {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.composite-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 90px;
+}
+
+.composite-bar {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.composite-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+.composite-val {
+  font-size: 0.8rem;
+  font-weight: 600;
+  width: 24px;
+  text-align: right;
+}
+
+.vol-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: var(--border);
+  color: var(--muted);
+}
+
+.vol-badge.elevated {
+  background: transparent;
+  border: 1px solid var(--warning);
+  color: var(--warning);
+}
+
+.signal-pill {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.signal-pill.new_entrant {
+  background: transparent;
+  border: 1px solid var(--positive);
+  color: var(--positive);
+}
+
+.signal-pill.held {
+  background: var(--border);
+  color: var(--muted);
+}
+
+.signal-pill.dropped_out {
+  background: transparent;
+  border: 1px solid var(--negative);
+  color: var(--negative);
+}
+
+.dropped-section {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+}
+
+.dropped-section h3 {
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+}
+
+.dropped-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  font-size: 0.85rem;
+}
+
+.metric-value-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.metric-sub {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.momentum-value.positive {
+  color: var(--positive);
+}
+
+.momentum-value.negative {
+  color: var(--negative);
+}
+
+.momentum-value.warning {
+  color: var(--warning);
+}
+
+.metric-meaning {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  background: rgba(127, 127, 127, 0.08);
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+}
+
+.modal-foot {
+  margin-top: 1rem;
+  font-size: 0.75rem;
 }
