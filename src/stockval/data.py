@@ -30,6 +30,13 @@ class Fundamentals:
     # meaningful concept outside banking, and requires extra statement fetches we
     # don't want to pay for on every ticker.
     net_interest_margin: float | None
+    # Raw $ dividend (DDM needs this, not just the yield) and analyst consensus
+    # price targets — both already sitting in the same info dict, no extra call.
+    dividend_rate: float | None
+    target_mean_price: float | None
+    target_low_price: float | None
+    target_high_price: float | None
+    number_of_analyst_opinions: float | None
 
 
 def is_bank_industry(sector: str | None, industry: str | None) -> bool:
@@ -85,9 +92,9 @@ def fetch_fundamentals(ticker: str) -> Fundamentals:
     # info["dividendYield"] has shipped as both a fraction and a plain percentage
     # number across yfinance versions — trailingAnnualDividendYield has stayed a
     # fraction, so prefer it and fall back to deriving one from the dividend rate.
+    dividend_rate = info.get("dividendRate")
     dividend_yield = info.get("trailingAnnualDividendYield")
     if dividend_yield is None:
-        dividend_rate = info.get("dividendRate")
         price = info.get("currentPrice") or info.get("regularMarketPrice")
         if dividend_rate is not None and price:
             dividend_yield = dividend_rate / price
@@ -113,4 +120,9 @@ def fetch_fundamentals(ticker: str) -> Fundamentals:
         industry=industry,
         dividend_yield=dividend_yield,
         net_interest_margin=net_interest_margin,
+        dividend_rate=dividend_rate,
+        target_mean_price=info.get("targetMeanPrice"),
+        target_low_price=info.get("targetLowPrice"),
+        target_high_price=info.get("targetHighPrice"),
+        number_of_analyst_opinions=info.get("numberOfAnalystOpinions"),
     )

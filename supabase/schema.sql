@@ -19,7 +19,12 @@ create table public.fundamentals_cache (
   sector               text,
   industry             text,
   dividend_yield       numeric,
-  net_interest_margin  numeric
+  net_interest_margin  numeric,
+  dividend_rate        numeric,
+  target_mean_price    numeric,
+  target_low_price     numeric,
+  target_high_price    numeric,
+  number_of_analyst_opinions numeric
 );
 
 alter table public.fundamentals_cache enable row level security;
@@ -56,3 +61,8 @@ alter table public.fundamentals_cache add column if not exists sector text;
 alter table public.fundamentals_cache add column if not exists industry text;
 alter table public.fundamentals_cache add column if not exists dividend_yield numeric;
 alter table public.fundamentals_cache add column if not exists net_interest_margin numeric;
+alter table public.fundamentals_cache add column if not exists dividend_rate numeric;
+alter table public.fundamentals_cache add column if not exists target_mean_price numeric;
+alter table public.fundamentals_cache add column if not exists target_low_price numeric;
+alter table public.fundamentals_cache add column if not exists target_high_price numeric;
+alter table public.fundamentals_cache add column if not exists number_of_analyst_opinions numeric;

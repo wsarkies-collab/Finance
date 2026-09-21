@@ -8,7 +8,7 @@ import type { Fundamentals } from "./types";
 const MAX_TICKERS_PER_REQUEST = 25;
 const DEFAULT_CACHE_TTL_MINUTES = 30;
 
-interface FundamentalsCacheRow {
+export interface FundamentalsCacheRow {
   ticker: string;
   fetched_at: string;
   price: number | null;
@@ -28,9 +28,14 @@ interface FundamentalsCacheRow {
   industry: string | null;
   dividend_yield: number | null;
   net_interest_margin: number | null;
+  dividend_rate: number | null;
+  target_mean_price: number | null;
+  target_low_price: number | null;
+  target_high_price: number | null;
+  number_of_analyst_opinions: number | null;
 }
 
-function rowToFundamentals(row: FundamentalsCacheRow): Fundamentals {
+export function rowToFundamentals(row: FundamentalsCacheRow): Fundamentals {
   return {
     ticker: row.ticker,
     price: row.price,
@@ -50,6 +55,11 @@ function rowToFundamentals(row: FundamentalsCacheRow): Fundamentals {
     industry: row.industry,
     dividendYield: row.dividend_yield,
     netInterestMargin: row.net_interest_margin,
+    dividendRate: row.dividend_rate,
+    targetMeanPrice: row.target_mean_price,
+    targetLowPrice: row.target_low_price,
+    targetHighPrice: row.target_high_price,
+    numberOfAnalystOpinions: row.number_of_analyst_opinions,
   };
 }
 
@@ -73,6 +83,11 @@ function fundamentalsToRow(f: Fundamentals): Omit<FundamentalsCacheRow, "fetched
     industry: f.industry,
     dividend_yield: f.dividendYield,
     net_interest_margin: f.netInterestMargin,
+    dividend_rate: f.dividendRate,
+    target_mean_price: f.targetMeanPrice,
+    target_low_price: f.targetLowPrice,
+    target_high_price: f.targetHighPrice,
+    number_of_analyst_opinions: f.numberOfAnalystOpinions,
   };
 }
 
@@ -103,6 +118,33 @@ function emptyReport(ticker: string): ValuationReport {
 function cacheTtlMs(): number {
   const minutes = Number(process.env.FUNDAMENTALS_CACHE_TTL_MINUTES ?? DEFAULT_CACHE_TTL_MINUTES);
   return (Number.isFinite(minutes) ? minutes : DEFAULT_CACHE_TTL_MINUTES) * 60_000;
+}
+
+/**
+ * Cache-first fundamentals lookup for a single ticker — same cache/fetch/upsert logic as
+ * runScreen, factored out for callers (e.g. lib/projection-service.ts) that only ever need
+ * one ticker and don't want runScreen's batch-ranking machinery. Returns null if the ticker
+ * can't be resolved at all (unknown ticker, fetch failure with no cached fallback).
+ */
+export async function getFundamentals(ticker: string): Promise<Fundamentals | null> {
+  const normalized = ticker.trim().toUpperCase();
+  const admin = createAdminClient();
+  const { data } = await admin.from("fundamentals_cache").select("*").eq("ticker", normalized).maybeSingle();
+
+  const row = data as FundamentalsCacheRow | null;
+  if (row && Date.now() - new Date(row.fetched_at).getTime() < cacheTtlMs()) {
+    return rowToFundamentals(row);
+  }
+
+  try {
+    const fresh = await fetchFundamentals(normalized);
+    await admin
+      .from("fundamentals_cache")
+      .upsert({ ...fundamentalsToRow(fresh), fetched_at: new Date().toISOString() }, { onConflict: "ticker" });
+    return fresh;
+  } catch {
+    return row ? rowToFundamentals(row) : null; // stale cache beats nothing
+  }
 }
 
 /**

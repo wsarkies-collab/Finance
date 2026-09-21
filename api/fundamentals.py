@@ -39,6 +39,13 @@ class Fundamentals:
     # meaningful concept outside banking, and requires extra statement fetches
     # we don't want to pay for on every ticker.
     net_interest_margin: float | None
+    # Raw $ dividend (DDM needs this, not just the yield) and analyst consensus
+    # price targets — both already sitting in the same info dict, no extra call.
+    dividend_rate: float | None
+    target_mean_price: float | None
+    target_low_price: float | None
+    target_high_price: float | None
+    number_of_analyst_opinions: float | None
 
 
 def _is_bank(sector: str | None, industry: str | None) -> bool:
@@ -120,6 +127,11 @@ def fetch_fundamentals(ticker: str) -> Fundamentals:
         industry=industry,
         dividend_yield=dividend_yield,
         net_interest_margin=net_interest_margin,
+        dividend_rate=info.get("dividendRate"),
+        target_mean_price=info.get("targetMeanPrice"),
+        target_low_price=info.get("targetLowPrice"),
+        target_high_price=info.get("targetHighPrice"),
+        number_of_analyst_opinions=info.get("numberOfAnalystOpinions"),
     )
 
 

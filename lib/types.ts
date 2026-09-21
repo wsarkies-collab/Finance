@@ -18,6 +18,12 @@ export interface Fundamentals {
   dividendYield: number | null;
   /** Only ever non-null for tickers classified as banks — see isBankIndustry in lib/screener.ts. */
   netInterestMargin: number | null;
+  /** Raw $ dividend — DDM projections need this, not just the yield. */
+  dividendRate: number | null;
+  targetMeanPrice: number | null;
+  targetLowPrice: number | null;
+  targetHighPrice: number | null;
+  numberOfAnalystOpinions: number | null;
 }
 
 /** Wire shape returned by api/fundamentals.py (snake_case, mirrors the Python dataclass). */
@@ -40,4 +46,9 @@ export interface FundamentalsWire {
   industry: string | null;
   dividend_yield: number | null;
   net_interest_margin: number | null;
+  dividend_rate: number | null;
+  target_mean_price: number | null;
+  target_low_price: number | null;
+  target_high_price: number | null;
+  number_of_analyst_opinions: number | null;
 }

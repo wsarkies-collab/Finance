@@ -71,6 +71,11 @@ export function isBankIndustry(sector: string | null, industry: string | null): 
   return sector === "Financial Services" && !!industry && industry.toLowerCase().includes("bank");
 }
 
+/** True if a lower raw value is more attractive for this metric (see LOWER_IS_BETTER above). */
+export function isLowerBetterMetric(metric: string): boolean {
+  return LOWER_IS_BETTER.has(metric as MetricName);
+}
+
 function marginOfSafety(fairValue: number | null, price: number | null): number | null {
   if (fairValue === null || !price) {
     return null;
@@ -78,13 +83,21 @@ function marginOfSafety(fairValue: number | null, price: number | null): number 
   return (fairValue - price) / price;
 }
 
+/** Growth-rate assumption used for the (single-point) DCF: the override if given, else the
+ * ticker's own trailing EPS growth if it has one, else DEFAULT_GROWTH_RATE. Also the basis
+ * for lib/projections.ts's multi-year projections, which additionally clamp this to a sane
+ * range — see the comment there for why raw trailing growth can't be trusted uncapped over
+ * a multi-year compounding horizon. */
+export function resolveGrowthRate(epsGrowthPct: number | null, override?: number | null): number {
+  return override ?? (epsGrowthPct ? epsGrowthPct / 100 : DEFAULT_GROWTH_RATE);
+}
+
 export function scoreTicker(
   fundamentals: Fundamentals,
   growthRateOverride?: number | null,
 ): ValuationReport {
   const f = fundamentals;
-  const growth =
-    growthRateOverride ?? (f.epsGrowthPct ? f.epsGrowthPct / 100 : DEFAULT_GROWTH_RATE);
+  const growth = resolveGrowthRate(f.epsGrowthPct, growthRateOverride);
 
   const dcfValue = dcfValuePerShare(f.freeCashFlow, growth, f.sharesOutstanding, f.netDebt || 0.0);
   const grahamValue = grahamNumber(f.eps, f.bookValuePerShare);
