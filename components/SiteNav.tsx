@@ -56,6 +56,13 @@ export function SiteNav() {
             >
               Momentum
             </Link>
+            <Link
+              href="/portfolio"
+              className="sidebar-link"
+              aria-current={pathname === "/portfolio" ? "page" : undefined}
+            >
+              Portfolio calculator
+            </Link>
             <button type="button" className="sidebar-link sidebar-link-placeholder" disabled title="Coming soon">
               Watchlist
               <span className="sidebar-badge">Coming soon</span>
