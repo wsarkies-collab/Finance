@@ -1,0 +1,581 @@
+<title>Portfolio Calculator</title>
+<style>
+  :root{
+    --ink:#1a2233;
+    --paper:#f3f4f7;
+    --panel:#ffffff;
+    --panel-2:#eaecf1;
+    --line:#dbdfe6;
+    --muted:#5c6472;
+    --accent:#3d5a80;
+    --accent-ink:#28405e;
+    --accent-soft:#e4eaf2;
+    --risk-low:#2f7d5a;
+    --risk-mid:#b8862f;
+    --risk-high:#b23b3b;
+    --shadow: 0 1px 2px rgba(26,34,51,0.06), 0 10px 28px rgba(26,34,51,0.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#e9ecf2;
+      --paper:#12151c;
+      --panel:#1b1f29;
+      --panel-2:#242938;
+      --line:#343b4a;
+      --muted:#9aa3b5;
+      --accent:#7ea3d1;
+      --accent-ink:#bcd4ef;
+      --accent-soft:#25334a;
+      --risk-low:#6fc79b;
+      --risk-mid:#e0b968;
+      --risk-high:#e18a84;
+      --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 30px rgba(0,0,0,0.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#e9ecf2; --paper:#12151c; --panel:#1b1f29; --panel-2:#242938; --line:#343b4a; --muted:#9aa3b5;
+    --accent:#7ea3d1; --accent-ink:#bcd4ef; --accent-soft:#25334a;
+    --risk-low:#6fc79b; --risk-mid:#e0b968; --risk-high:#e18a84;
+    --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 30px rgba(0,0,0,0.4);
+  }
+
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:"Public Sans", ui-sans-serif, system-ui, sans-serif; padding-inline:20px; padding-block:26px 48px;}
+  .wrap{max-width:840px; margin:0 auto;}
+
+  h1,h2{font-family:"Public Sans", ui-sans-serif, sans-serif; margin:0; letter-spacing:-0.01em;}
+  h1{font-size:clamp(1.55rem,3.6vw,2.05rem); font-weight:700;}
+  h2{font-size:1rem; font-weight:700; margin-bottom:10px;}
+
+  .kicker{font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:0.68rem; letter-spacing:0.13em; text-transform:uppercase; color:var(--accent-ink); background:var(--accent-soft); border:1px solid var(--line); border-radius:999px; padding:4px 10px; display:inline-block; margin-bottom:12px;}
+  header p{color:var(--muted); max-width:60ch; line-height:1.55; font-size:0.94rem; margin:8px 0 22px;}
+
+  .step{background:var(--panel); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); padding:20px; margin-bottom:16px;}
+  .step-head{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+  .step-num{font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:0.75rem; font-weight:700; width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .step-num{color:#0c1420;} }
+  :root[data-theme="dark"] .step-num{color:#0c1420;}
+  .step-head h2{margin:0;}
+  .step.disabled{opacity:0.5; pointer-events:none;}
+
+  .search-box{position:relative;}
+  .search-box input{width:100%; font:inherit; font-size:0.96rem; padding:11px 14px; border:1.5px solid var(--line); border-radius:10px; background:var(--paper); color:var(--ink); outline:none;}
+  .search-box input:focus{border-color:var(--accent);}
+  .dropdown{margin-top:8px; border:1px solid var(--line); border-radius:10px; overflow:hidden; max-height:260px; overflow-y:auto;}
+  .dropdown button{display:flex; width:100%; align-items:center; justify-content:space-between; gap:10px; padding:9px 13px; border:none; border-bottom:1px solid var(--line); background:var(--panel); cursor:pointer; text-align:left; font:inherit; color:var(--ink);}
+  .dropdown button:last-child{border-bottom:none;}
+  .dropdown button:hover{background:var(--panel-2);}
+  .dropdown button:disabled{opacity:0.4; cursor:not-allowed;}
+  .dm-main{display:flex; flex-direction:column; gap:1px; min-width:0;}
+  .dm-main .t{font-family:"IBM Plex Mono", ui-monospace, monospace; font-weight:700; font-size:0.88rem;}
+  .dm-main .n{font-size:0.78rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .dm-sector{font-size:0.66rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); background:var(--panel-2); border-radius:999px; padding:3px 8px; flex-shrink:0;}
+  .dm-badges{display:flex; gap:5px; flex-shrink:0; align-items:center;}
+  .market-tag{font-family:"IBM Plex Mono", monospace; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.03em; padding:2px 6px; border-radius:999px;}
+  .market-tag.SP500{background:var(--panel-2); color:var(--muted);}
+  .market-tag.ASX{background:#e2ebe3; color:#2a4d3a;}
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .market-tag.ASX{background:#243529; color:#bfe3cd;} }
+  :root[data-theme="dark"] .market-tag.ASX{background:#243529; color:#bfe3cd;}
+  .chip .market-tag{margin-left:2px;}
+
+  .chip-list{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; min-height:0;}
+  .chip{display:inline-flex; align-items:center; gap:6px; background:var(--panel-2); border:1px solid var(--line); border-radius:999px; padding:6px 6px 6px 12px; font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:0.82rem;}
+  .chip button{border:none; background:var(--line); color:var(--ink); width:19px; height:19px; border-radius:50%; cursor:pointer; font-size:0.85rem; line-height:1; display:flex; align-items:center; justify-content:center;}
+  .empty-hint{font-size:0.82rem; color:var(--muted); margin-top:12px;}
+
+  .save-row{display:flex; justify-content:space-between; align-items:center; margin-top:16px; gap:12px; flex-wrap:wrap;}
+  .save-note{font-size:0.78rem; color:var(--muted);}
+  .btn{font:inherit; font-size:0.92rem; font-weight:700; padding:10px 18px; border:none; border-radius:10px; background:var(--accent); color:#fff; cursor:pointer;}
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .btn{color:#0c1420;} }
+  :root[data-theme="dark"] .btn{color:#0c1420;}
+  .btn:disabled{opacity:0.45; cursor:not-allowed;}
+  .btn-secondary{background:var(--panel-2); color:var(--ink); border:1px solid var(--line);}
+
+  .amount-row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .amount-box{position:relative; flex:1; min-width:200px;}
+  .amount-box span{position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--muted); font-family:"IBM Plex Mono", monospace;}
+  .amount-box input{width:100%; font:inherit; font-family:"IBM Plex Mono", monospace; font-size:1rem; padding:11px 14px 11px 28px; border:1.5px solid var(--line); border-radius:10px; background:var(--paper); color:var(--ink); outline:none;}
+  .amount-box input:focus{border-color:var(--accent);}
+
+  .locked-chip{background:var(--accent-soft); border-color:var(--accent);}
+
+  .summary-row{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:16px;}
+  .stat-tile{flex:1; min-width:140px; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:12px 14px;}
+  .stat-tile .lbl{font-family:"IBM Plex Mono", monospace; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); display:block; margin-bottom:4px;}
+  .stat-tile .val{font-family:"IBM Plex Mono", monospace; font-size:1.3rem; font-weight:700;}
+  .stat-tile .sub{font-size:0.76rem; color:var(--muted); margin-top:2px;}
+  .stat-tile .val.good{color:var(--risk-low);}
+
+  table{width:100%; border-collapse:collapse;}
+  thead th{text-align:left; font-family:"IBM Plex Mono", monospace; font-size:0.66rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); padding:8px 10px; border-bottom:1px solid var(--line);}
+  thead th.num, td.num{text-align:right;}
+  tbody td{padding:10px; border-bottom:1px solid var(--line); font-size:0.88rem;}
+  tbody tr:last-child td{border-bottom:none;}
+  .t-cell{display:flex; flex-direction:column; gap:1px;}
+  .t-cell .t{font-family:"IBM Plex Mono", monospace; font-weight:700;}
+  .t-cell .n{font-size:0.74rem; color:var(--muted);}
+  .weight-cell{display:flex; align-items:center; gap:8px; min-width:120px;}
+  .weight-track{flex:1; height:6px; border-radius:99px; background:var(--panel-2); overflow:hidden;}
+  .weight-fill{height:100%; background:var(--accent); border-radius:99px;}
+  .weight-num{font-family:"IBM Plex Mono", monospace; font-size:0.8rem; width:3.4em; text-align:right;}
+  .amt-cell{font-family:"IBM Plex Mono", monospace; font-variant-numeric:tabular-nums;}
+  .vol-badge{font-family:"IBM Plex Mono", monospace; font-size:0.72rem; padding:2px 7px; border-radius:999px;}
+  .vol-low{background:#e1f0e6; color:var(--risk-low);}
+  .vol-mid{background:#f4ecd8; color:var(--risk-mid);}
+  .vol-high{background:#f5e0de; color:var(--risk-high);}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .vol-low{background:#1c3327;}
+    :root:not([data-theme="light"]) .vol-mid{background:#3a2e13;}
+    :root:not([data-theme="light"]) .vol-high{background:#3a1f1c;}
+  }
+  :root[data-theme="dark"] .vol-low{background:#1c3327;}
+  :root[data-theme="dark"] .vol-mid{background:#3a2e13;}
+  :root[data-theme="dark"] .vol-high{background:#3a1f1c;}
+
+  .method-note{font-size:0.83rem; line-height:1.6; color:var(--muted);}
+  .method-note code{font-family:"IBM Plex Mono", monospace; font-size:0.82em; background:var(--panel-2); padding:1px 5px; border-radius:5px; color:var(--ink);}
+  .method-note ul{margin:8px 0 0; padding-left:20px;}
+  .method-note li + li{margin-top:5px;}
+
+  .scroller{overflow-x:auto;}
+  [hidden]{display:none!important;}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+
+<div class="wrap">
+  <header>
+    <span class="kicker">Mock-up &middot; new "Portfolio Calculator" tab, not wired into the app</span>
+    <h1>Portfolio Calculator</h1>
+    <p>Add the tickers you're considering, tell it how much you're investing, and it solves for the <b>minimum-variance weighting</b> &mdash; the allocation across exactly these tickers that minimizes portfolio risk (standard deviation), per Harry Markowitz's mean-variance framework. Built on real trailing-12-month daily prices across the full <b>S&amp;P 500 and ASX 200</b> (696 tickers).</p>
+  </header>
+
+  <div class="step" id="stepSearch">
+    <div class="step-head"><span class="step-num">1</span><h2>Add tickers to your portfolio</h2></div>
+    <div class="search-box">
+      <input id="searchInput" type="text" placeholder="Search a ticker or company name&hellip;" autocomplete="off" aria-label="Search for a ticker">
+      <div id="dropdownWrap"></div>
+    </div>
+    <div class="chip-list" id="chipList"></div>
+    <p class="empty-hint" id="emptyHint">Add at least 2 tickers to build a portfolio. Try AAPL, JPM, XOM, JNJ, NVDA&hellip;</p>
+    <div class="save-row">
+      <span class="save-note" id="countNote"></span>
+      <button class="btn" id="saveBtn" disabled>Save portfolio</button>
+    </div>
+  </div>
+
+  <div class="step disabled" id="stepAmount">
+    <div class="step-head"><span class="step-num">2</span><h2>Total investment amount</h2></div>
+    <div class="amount-row">
+      <div class="amount-box"><span>$</span><input id="amountInput" type="number" min="0" step="100" placeholder="10,000" aria-label="Total investment amount"></div>
+      <button class="btn" id="calcBtn">Calculate optimal weights</button>
+      <button class="btn btn-secondary" id="editBtn">Edit tickers</button>
+    </div>
+  </div>
+
+  <div class="step" id="stepResults" hidden>
+    <div class="step-head"><span class="step-num">3</span><h2>Minimum-variance allocation</h2></div>
+
+    <div class="summary-row">
+      <div class="stat-tile">
+        <span class="lbl">Portfolio Volatility</span>
+        <span class="val good" id="portVol">&mdash;</span>
+        <span class="sub">annualized, at these weights</span>
+      </div>
+      <div class="stat-tile">
+        <span class="lbl">Equal-Weight Volatility</span>
+        <span class="val" id="ewVol">&mdash;</span>
+        <span class="sub">same tickers, 1/N each</span>
+      </div>
+      <div class="stat-tile">
+        <span class="lbl">Risk Reduction</span>
+        <span class="val good" id="riskReduction">&mdash;</span>
+        <span class="sub">vs. equal-weight</span>
+      </div>
+      <div class="stat-tile">
+        <span class="lbl">Data Used</span>
+        <span class="val" id="daysUsed" style="font-size:1.05rem;">&mdash;</span>
+        <span class="sub">shared trading days</span>
+      </div>
+    </div>
+
+    <div class="scroller">
+      <table>
+        <thead><tr><th>Ticker</th><th class="num">Weight</th><th class="num">Invest</th><th class="num">Ann. Volatility</th></tr></thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="step" id="stepSharpe" hidden>
+    <div class="step-head"><span class="step-num">4</span><h2>Risk-adjusted return &mdash; Sharpe ratio</h2></div>
+    <p class="method-note" style="margin-bottom:14px;">The <b>Sharpe ratio</b> measures how much extra return a portfolio earns for each unit of risk (volatility) it takes on, above what you'd get holding something essentially risk-free. It's calculated as <code>(portfolio return &minus; risk-free rate) &divide; portfolio volatility</code>. A higher number means you're being compensated better for the risk you're carrying: as a rough rule of thumb, below 1 is considered weak, 1&ndash;2 is decent, and above 2 is very good &mdash; though what counts as "good" varies a lot by asset class and time period.</p>
+    <p class="method-note" style="margin-bottom:14px;">Expected return is estimated via the <b>Capital Asset Pricing Model (CAPM)</b> &mdash; the direct academic extension of Markowitz's own framework: <code>E(R<sub>i</sub>) = R<sub>f</sub> + &beta;<sub>i</sub> &times; ERP</code>, where &beta;<sub>i</sub> is each ticker's real trailing beta against its home index (S&amp;P 500 or ASX 200) and ERP is the equity risk premium &mdash; the extra return investors demand for holding stocks over a risk-free asset. Both inputs below are editable assumptions, not live data.</p>
+
+    <div class="amount-row" style="margin-bottom:14px; flex-wrap:wrap;">
+      <div class="amount-box" style="max-width:220px;"><span>%</span><input id="rfInput" type="number" min="0" max="20" step="0.1" value="4.0" aria-label="Risk-free rate percent"></div>
+      <span class="save-note">Risk-free rate (e.g. short-term T-bill/cash rate)</span>
+    </div>
+    <div class="amount-row" style="margin-bottom:14px; flex-wrap:wrap;">
+      <div class="amount-box" style="max-width:220px;"><span>%</span><input id="erpInput" type="number" min="0" max="20" step="0.1" value="5.5" aria-label="Equity risk premium percent"></div>
+      <span class="save-note">Equity risk premium &mdash; long-run historical average is roughly 5&ndash;6%</span>
+    </div>
+
+    <div class="summary-row">
+      <div class="stat-tile">
+        <span class="lbl">Portfolio Return (CAPM)</span>
+        <span class="val" id="portReturn">&mdash;</span>
+        <span class="sub">weighted at MV weights</span>
+      </div>
+      <div class="stat-tile">
+        <span class="lbl">Portfolio Beta</span>
+        <span class="val" id="portBeta">&mdash;</span>
+        <span class="sub">weighted at MV weights</span>
+      </div>
+      <div class="stat-tile">
+        <span class="lbl">Sharpe Ratio</span>
+        <span class="val good" id="sharpeVal">&mdash;</span>
+        <span class="sub">this portfolio, at MV weights</span>
+      </div>
+      <div class="stat-tile">
+        <span class="lbl">Equal-Weight Sharpe</span>
+        <span class="val" id="ewSharpeVal">&mdash;</span>
+        <span class="sub">same tickers, 1/N each</span>
+      </div>
+    </div>
+
+    <div class="scroller">
+      <table>
+        <thead><tr><th>Ticker</th><th class="num">Beta</th><th class="num">CAPM Expected Return</th></tr></thead>
+        <tbody id="sharpeBody"></tbody>
+      </table>
+    </div>
+
+    <p class="method-note" style="margin-top:14px;">
+      <b>Important caveat:</b> the weights above were chosen purely to <em>minimize risk</em> &mdash; the optimizer never looked at expected return at all, CAPM or otherwise. This Sharpe ratio describes the return/risk trade-off that resulted from minimizing risk, not something the optimizer targeted. CAPM's own well-documented weakness is that beta (sensitivity to a single market index) only explains part of real-world stock returns &mdash; it's a more principled estimate than a raw trailing average, but still an estimate, not a forecast.
+    </p>
+  </div>
+
+  <div class="step method-note">
+    <h2>How this is calculated</h2>
+    <p>This solves the classic Markowitz <b>global minimum-variance</b> problem: find portfolio weights <code>w</code> that minimize <code>w&sup1;&Sigma;w</code> (portfolio variance), subject to weights summing to 100% and no short-selling (every weight &ge; 0). It does <em>not</em> use expected-return forecasts &mdash; this is deliberately the "minimize risk" corner of the efficient frontier, not the "best risk-adjusted return" corner, matching what was asked for.</p>
+    <ul>
+      <li>Universe: the full <b>S&amp;P 500</b> (501 of 503 constituents had usable price history) and <b>ASX 200</b> (195 of 200) &mdash; 696 real, searchable tickers.</li>
+      <li><code>&Sigma;</code> (the covariance matrix) is built from real daily returns over the trailing ~12 months for whichever tickers you pick, annualized (&times;252).</li>
+      <li>US and ASX markets trade on different holiday calendars, so returns are aligned by <b>actual shared calendar date</b> (not just "the last N days") before computing covariance &mdash; otherwise a mixed US/ASX portfolio would silently compare the wrong days against each other.</li>
+      <li>Solved numerically via projected gradient descent onto the simplex (long-only, fully invested) &mdash; there's no closed-form solution once the no-short-selling constraint is added.</li>
+      <li>Your saved ticker list is remembered in this browser only (not shared or sent anywhere) so it's still here if you reload.</li>
+      <li>This is a real optimizer running on real historical data, but a mock-up of the feature &mdash; a production version would refresh the price data on a schedule rather than a one-time snapshot.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+(function(){
+  var UNIVERSE = null;
+  var portfolio = []; // array of ticker symbols
+  var saved = false;
+
+  var searchInput = document.getElementById("searchInput");
+  var dropdownWrap = document.getElementById("dropdownWrap");
+  var chipListEl = document.getElementById("chipList");
+  var emptyHint = document.getElementById("emptyHint");
+  var countNote = document.getElementById("countNote");
+  var saveBtn = document.getElementById("saveBtn");
+  var editBtn = document.getElementById("editBtn");
+  var calcBtn = document.getElementById("calcBtn");
+  var stepSearch = document.getElementById("stepSearch");
+  var stepAmount = document.getElementById("stepAmount");
+  var stepResults = document.getElementById("stepResults");
+  var amountInput = document.getElementById("amountInput");
+
+  function loadSavedPortfolio(){
+    try {
+      var raw = localStorage.getItem("portfolioCalc.tickers");
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  }
+  function persistPortfolio(){
+    try { localStorage.setItem("portfolioCalc.tickers", JSON.stringify(portfolio)); } catch (e) {}
+  }
+
+  fetch("portfolio-universe-full.json").then(function(r){ return r.json(); }).then(function(data){
+    UNIVERSE = data; // { dates: [...], tickers: { TICKER: { name, sector, market, closes: [...] } } }
+    portfolio = loadSavedPortfolio().filter(function(t){ return UNIVERSE.tickers[t]; });
+    renderChips();
+  }).catch(function(){
+    dropdownWrap.innerHTML = '<div class="dropdown"><button disabled>Could not load ticker universe</button></div>';
+  });
+
+  function renderChips(){
+    chipListEl.innerHTML = portfolio.map(function(t){
+      var market = UNIVERSE.tickers[t].market;
+      return '<span class="chip"><strong>' + t + '</strong><span class="market-tag ' + market + '">' + (market==="ASX"?"ASX":"S&amp;P") + '</span>' +
+        '<button type="button" data-t="' + t + '" aria-label="Remove ' + t + '">&times;</button></span>';
+    }).join("");
+    Array.prototype.forEach.call(chipListEl.querySelectorAll("button"), function(btn){
+      btn.addEventListener("click", function(){
+        portfolio = portfolio.filter(function(t){ return t !== btn.getAttribute("data-t"); });
+        persistPortfolio();
+        renderChips();
+      });
+    });
+    emptyHint.hidden = portfolio.length > 0;
+    countNote.textContent = portfolio.length + " ticker" + (portfolio.length===1?"":"s") + " added";
+    saveBtn.disabled = portfolio.length < 2;
+  }
+
+  function search(q){
+    if (!UNIVERSE || q.trim().length < 1){ dropdownWrap.innerHTML = ""; return; }
+    var ql = q.trim().toLowerCase();
+    var matches = Object.keys(UNIVERSE.tickers).filter(function(t){
+      return t.toLowerCase().indexOf(ql) !== -1 || UNIVERSE.tickers[t].name.toLowerCase().indexOf(ql) !== -1;
+    }).slice(0, 8);
+    if (matches.length === 0){
+      dropdownWrap.innerHTML = '<div class="dropdown"><button disabled>No matches for "' + q + '"</button></div>';
+      return;
+    }
+    dropdownWrap.innerHTML = '<div class="dropdown">' + matches.map(function(t){
+      var already = portfolio.indexOf(t) !== -1;
+      var u = UNIVERSE.tickers[t];
+      return '<button type="button" data-t="' + t + '"' + (already?' disabled':'') + '>' +
+        '<span class="dm-main"><span class="t">' + t + '</span><span class="n">' + u.name + (already?' (added)':'') + '</span></span>' +
+        '<span class="dm-badges"><span class="market-tag ' + u.market + '">' + (u.market==="ASX"?"ASX":"S&amp;P") + '</span><span class="dm-sector">' + u.sector + '</span></span>' +
+      '</button>';
+    }).join("") + '</div>';
+    Array.prototype.forEach.call(dropdownWrap.querySelectorAll("button:not(:disabled)"), function(btn){
+      btn.addEventListener("click", function(){
+        var t = btn.getAttribute("data-t");
+        if (portfolio.indexOf(t) === -1){ portfolio.push(t); persistPortfolio(); renderChips(); }
+        searchInput.value = ""; dropdownWrap.innerHTML = "";
+      });
+    });
+  }
+  searchInput.addEventListener("input", function(){ search(searchInput.value); });
+
+  saveBtn.addEventListener("click", function(){
+    saved = true;
+    stepAmount.classList.remove("disabled");
+    amountInput.focus();
+  });
+  editBtn.addEventListener("click", function(){
+    saved = false;
+    stepAmount.classList.add("disabled");
+    stepResults.hidden = true;
+  });
+
+  // ---- Linear algebra + minimum-variance solver ----
+  // Daily returns are derived from closes per ticker, then aligned by ACTUAL shared calendar
+  // date (inner join on the common date index) before computing covariance — not by trailing
+  // position — because the S&P 500 and ASX 200 trade on different holiday calendars, so
+  // "the last N closes" for a US ticker and an ASX ticker don't correspond to the same days.
+  function returnsWithNulls(ticker){
+    var closes = UNIVERSE.tickers[ticker].closes;
+    var r = new Array(closes.length).fill(null);
+    for (var i=1;i<closes.length;i++){
+      if (closes[i] != null && closes[i-1] != null) r[i] = closes[i]/closes[i-1] - 1;
+    }
+    return r;
+  }
+
+  function alignedReturns(tickers){
+    var perTicker = tickers.map(returnsWithNulls);
+    var len = perTicker[0].length;
+    var commonIdx = [];
+    for (var i=0;i<len;i++){
+      var ok = true;
+      for (var k=0;k<perTicker.length;k++){ if (perTicker[k][i] == null){ ok = false; break; } }
+      if (ok) commonIdx.push(i);
+    }
+    var aligned = perTicker.map(function(r){ return commonIdx.map(function(i){ return r[i]; }); });
+    return { series: aligned, n: commonIdx.length };
+  }
+
+  function buildCovariance(tickers){
+    var result = alignedReturns(tickers);
+    var series = result.series, len = result.n, n = tickers.length;
+    if (len < 30){
+      return { cov: null, n: len };
+    }
+    var means = series.map(function(s){ return s.reduce(function(a,b){return a+b;},0) / len; });
+    var cov = [];
+    for (var i=0;i<n;i++){
+      cov.push([]);
+      for (var j=0;j<n;j++){
+        var s=0;
+        for (var k=0;k<len;k++){ s += (series[i][k]-means[i])*(series[j][k]-means[j]); }
+        cov[i][j] = (s/(len-1)) * 252; // annualized
+      }
+    }
+    return { cov: cov, n: len };
+  }
+
+  function matVec(M, v){
+    return M.map(function(row){ return row.reduce(function(a,x,i){return a+x*v[i];},0); });
+  }
+  function dot(a,b){ return a.reduce(function(s,x,i){return s+x*b[i];},0); }
+
+  function projectToSimplex(v){
+    var n = v.length;
+    var u = v.slice().sort(function(a,b){return b-a;});
+    var css = 0, rho = -1, cssRho = 0;
+    for (var i=0;i<n;i++){
+      css += u[i];
+      var t = (css - 1) / (i+1);
+      if (u[i] - t > 0){ rho = i; cssRho = css; }
+    }
+    var theta = (cssRho - 1) / (rho+1);
+    return v.map(function(x){ return Math.max(x - theta, 0); });
+  }
+
+  function largestEigenApprox(cov, n){
+    var v = new Array(n).fill(1/Math.sqrt(n));
+    for (var iter=0; iter<50; iter++){
+      var w = matVec(cov, v);
+      var norm = Math.sqrt(w.reduce(function(s,x){return s+x*x;},0)) || 1;
+      v = w.map(function(x){ return x/norm; });
+    }
+    var Av = matVec(cov, v);
+    return dot(v, Av);
+  }
+
+  function minVarianceWeights(cov){
+    var n = cov.length;
+    var lambdaMax = largestEigenApprox(cov, n) || 1;
+    var lr = 1 / (2 * lambdaMax);
+    var w = new Array(n).fill(1/n);
+    for (var iter=0; iter<3000; iter++){
+      var grad = matVec(cov, w).map(function(x){ return 2*x; });
+      var wNew = w.map(function(x,i){ return x - lr*grad[i]; });
+      wNew = projectToSimplex(wNew);
+      var diff = 0;
+      for (var i=0;i<n;i++) diff += Math.abs(wNew[i]-w[i]);
+      w = wNew;
+      if (diff < 1e-10) break;
+    }
+    return w;
+  }
+
+  function portfolioVol(cov, w){
+    var Sw = matVec(cov, w);
+    var variance = dot(w, Sw);
+    return Math.sqrt(Math.max(variance, 0));
+  }
+
+  function volClass(v){
+    if (v < 0.20) return "vol-low";
+    if (v < 0.35) return "vol-mid";
+    return "vol-high";
+  }
+
+  var stepSharpe = document.getElementById("stepSharpe");
+  var rfInput = document.getElementById("rfInput");
+  var erpInput = document.getElementById("erpInput");
+  var lastComputation = null; // { tickers, weights, ewWeights, betas, pVol, ewVol }
+
+  var BENCHMARK_FOR = { SP500: "^GSPC", ASX: "^AXJO" };
+
+  function betaFor(ticker){
+    var market = UNIVERSE.tickers[ticker].market;
+    var benchmark = BENCHMARK_FOR[market];
+    if (!benchmark || !UNIVERSE.tickers[benchmark]) return 1; // fall back to market-average beta if no benchmark match
+    var result = alignedReturns([ticker, benchmark]);
+    if (result.n < 30) return 1;
+    var stockRets = result.series[0], mktRets = result.series[1];
+    var n = result.n;
+    var meanS = stockRets.reduce(function(a,b){return a+b;},0)/n;
+    var meanM = mktRets.reduce(function(a,b){return a+b;},0)/n;
+    var cov = 0, varM = 0;
+    for (var k=0;k<n;k++){
+      cov += (stockRets[k]-meanS) * (mktRets[k]-meanM);
+      varM += (mktRets[k]-meanM) * (mktRets[k]-meanM);
+    }
+    return varM > 0 ? cov/varM : 1;
+  }
+
+  function updateSharpe(){
+    if (!lastComputation) return;
+    var rf = (parseFloat(rfInput.value) || 0) / 100;
+    var erp = (parseFloat(erpInput.value) || 0) / 100;
+    var expectedReturns = lastComputation.betas.map(function(b){ return rf + b*erp; });
+
+    var portReturn = dot(lastComputation.weights, expectedReturns);
+    var ewReturn = dot(lastComputation.ewWeights, expectedReturns);
+    var portBeta = dot(lastComputation.weights, lastComputation.betas);
+    var sharpe = lastComputation.pVol > 0 ? (portReturn - rf) / lastComputation.pVol : 0;
+    var ewSharpe = lastComputation.ewVol > 0 ? (ewReturn - rf) / lastComputation.ewVol : 0;
+
+    document.getElementById("portReturn").textContent = (portReturn*100).toFixed(1) + "%";
+    document.getElementById("portBeta").textContent = portBeta.toFixed(2);
+    var sharpeEl = document.getElementById("sharpeVal");
+    sharpeEl.textContent = sharpe.toFixed(2);
+    sharpeEl.className = "val " + (sharpe >= 1 ? "good" : "");
+    document.getElementById("ewSharpeVal").textContent = ewSharpe.toFixed(2);
+
+    document.getElementById("sharpeBody").innerHTML = lastComputation.tickers.map(function(t, i){
+      var u = UNIVERSE.tickers[t];
+      return '<tr><td><div class="t-cell"><span class="t">' + t + ' <span class="market-tag ' + u.market + '">' + (u.market==="ASX"?"ASX":"S&amp;P") + '</span></span><span class="n">' + u.name + '</span></div></td>' +
+        '<td class="num">' + lastComputation.betas[i].toFixed(2) + '</td>' +
+        '<td class="num">' + (expectedReturns[i]*100).toFixed(1) + '%</td></tr>';
+    }).join("");
+
+    stepSharpe.hidden = false;
+  }
+
+  calcBtn.addEventListener("click", function(){
+    if (!UNIVERSE || portfolio.length < 2) return;
+    var tickers = portfolio.slice();
+    var covResult = buildCovariance(tickers);
+    if (!covResult.cov){
+      document.getElementById("resultsBody").innerHTML =
+        '<tr><td colspan="4">Not enough overlapping trading days (' + covResult.n + ') across this ticker set to compute a reliable covariance &mdash; try removing a very recently listed ticker.</td></tr>';
+      stepResults.hidden = false;
+      stepSharpe.hidden = true;
+      return;
+    }
+    var cov = covResult.cov;
+    var weights = minVarianceWeights(cov);
+    var pVol = portfolioVol(cov, weights);
+    var ewWeights = new Array(tickers.length).fill(1/tickers.length);
+    var ewVol = portfolioVol(cov, ewWeights);
+    var totalAmount = parseFloat(amountInput.value) || 0;
+
+    document.getElementById("portVol").textContent = (pVol*100).toFixed(1) + "%";
+    document.getElementById("ewVol").textContent = (ewVol*100).toFixed(1) + "%";
+    var reduction = ewVol > 0 ? ((ewVol - pVol) / ewVol * 100) : 0;
+    document.getElementById("riskReduction").textContent = (reduction>=0?"-":"+") + Math.abs(reduction).toFixed(1) + "%";
+    document.getElementById("daysUsed").textContent = covResult.n + " days";
+
+    var rows = tickers.map(function(t, i){
+      var indivVol = Math.sqrt(cov[i][i]);
+      return { ticker: t, name: UNIVERSE.tickers[t].name, market: UNIVERSE.tickers[t].market, weight: weights[i], amount: weights[i]*totalAmount, vol: indivVol };
+    }).sort(function(a,b){ return b.weight - a.weight; });
+
+    document.getElementById("resultsBody").innerHTML = rows.map(function(r){
+      return '<tr>' +
+        '<td><div class="t-cell"><span class="t">' + r.ticker + ' <span class="market-tag ' + r.market + '">' + (r.market==="ASX"?"ASX":"S&amp;P") + '</span></span><span class="n">' + r.name + '</span></div></td>' +
+        '<td class="num"><div class="weight-cell"><div class="weight-track"><div class="weight-fill" style="width:' + (r.weight*100).toFixed(1) + '%"></div></div><span class="weight-num">' + (r.weight*100).toFixed(1) + '%</span></div></td>' +
+        '<td class="num amt-cell">$' + r.amount.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td>' +
+        '<td class="num"><span class="vol-badge ' + volClass(r.vol) + '">' + (r.vol*100).toFixed(1) + '%</span></td>' +
+      '</tr>';
+    }).join("");
+
+    var betas = tickers.map(betaFor);
+    lastComputation = { tickers: tickers, weights: weights, ewWeights: ewWeights, betas: betas, pVol: pVol, ewVol: ewVol };
+    updateSharpe();
+
+    stepResults.hidden = false;
+    stepResults.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+
+  rfInput.addEventListener("input", updateSharpe);
+  erpInput.addEventListener("input", updateSharpe);
+
+  amountInput.addEventListener("input", function(){
+    if (!stepResults.hidden) calcBtn.click();
+  });
+})();
+</script>
