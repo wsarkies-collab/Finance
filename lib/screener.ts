@@ -12,6 +12,7 @@ import {
   pegRatio,
   priceToBookVsRoe,
 } from "./valuation";
+import { percentileRanks } from "./stats";
 import type { Fundamentals } from "./types";
 
 export const DEFAULT_GROWTH_RATE = 0.05;
@@ -125,21 +126,6 @@ export function scoreTicker(
     netInterestMarginPct: f.netInterestMargin !== null ? f.netInterestMargin * 100 : null,
     compositeScore: null,
   };
-}
-
-function percentileRanks(values: (number | null)[]): (number | null)[] {
-  const present = values
-    .map((v, i): [number, number | null] => [i, v])
-    .filter((pair): pair is [number, number] => pair[1] !== null);
-  if (present.length < 2) {
-    return values.map(() => null);
-  }
-  const ordered = [...present].sort((a, b) => a[1] - b[1]);
-  const ranks: (number | null)[] = values.map(() => null);
-  ordered.forEach(([i], rank) => {
-    ranks[i] = rank / (ordered.length - 1);
-  });
-  return ranks;
 }
 
 /** Mutates `report.compositeScore` on every report in place, ranked across this batch only. */
