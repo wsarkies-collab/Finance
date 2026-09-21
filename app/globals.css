@@ -52,6 +52,116 @@ body {
   margin-right: auto;
 }
 
+.brand-btn {
+  all: unset;
+  font-weight: 700;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.nav-login {
+  margin-left: auto;
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.sidebar-backdrop.open {
+  visibility: visible;
+  opacity: 1;
+}
+
+.sidebar-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 260px;
+  max-width: 80vw;
+  background: var(--bg);
+  color: var(--fg);
+  border-right: 1px solid var(--border);
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  transform: translateX(-100%);
+  transition: transform 0.15s ease;
+}
+
+.sidebar-backdrop.open .sidebar-panel {
+  transform: translateX(0);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-brand {
+  font-weight: 700;
+}
+
+.sidebar-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar-link {
+  all: unset;
+  display: block;
+  padding: 0.6rem 0.7rem;
+  border-radius: 6px;
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.sidebar-link:hover,
+.sidebar-link:focus-visible {
+  background: var(--border);
+}
+
+.sidebar-link[aria-current="page"] {
+  background: var(--border);
+  font-weight: 600;
+}
+
+.sidebar-link-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.sidebar-link-placeholder:hover {
+  background: none;
+}
+
+.sidebar-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 main {
   max-width: 960px;
   margin: 0 auto;
@@ -567,6 +677,77 @@ form.watchlist-row button {
 .momentum-note {
   font-size: 0.85rem;
   max-width: 65ch;
+}
+
+.mode-toggle,
+.market-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.mode-toggle button,
+.market-toggle button {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border: none;
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.mode-toggle button + button,
+.market-toggle button + button {
+  border-left: 1px solid var(--border);
+}
+
+.mode-toggle button.active,
+.market-toggle button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.sector-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.sector-btn {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.sector-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.sector-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.sector-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sector-count {
+  font-size: 0.75rem;
+  opacity: 0.75;
 }
 
 .info-btn {
