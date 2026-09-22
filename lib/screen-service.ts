@@ -1,5 +1,6 @@
 import "server-only";
 
+import { mapWithConcurrency } from "./concurrency";
 import { fetchFundamentals } from "./fundamentals-client";
 import { applyCompositeScores, scoreTicker, sortReports, type ValuationReport } from "./screener";
 import { createAdminClient } from "./supabase/admin";
@@ -7,6 +8,9 @@ import type { Fundamentals } from "./types";
 
 const MAX_TICKERS_PER_REQUEST = 25;
 const DEFAULT_CACHE_TTL_MINUTES = 30;
+// Sector/market "browse" groups can run into the hundreds (e.g. Financials across both
+// markets) on a cold cache, where every ticker is a fundamentals-cache miss at once.
+const DEFAULT_CONCURRENCY = 15;
 
 export interface FundamentalsCacheRow {
   ticker: string;
@@ -155,11 +159,9 @@ export async function getFundamentals(ticker: string): Promise<Fundamentals | nu
 export async function runScreen(
   tickers: string[],
   growthRateOverride?: number,
+  maxTickers = MAX_TICKERS_PER_REQUEST,
 ): Promise<ValuationReport[]> {
-  const normalized = [...new Set(tickers.map((t) => t.trim().toUpperCase()).filter(Boolean))].slice(
-    0,
-    MAX_TICKERS_PER_REQUEST,
-  );
+  const normalized = [...new Set(tickers.map((t) => t.trim().toUpperCase()).filter(Boolean))].slice(0, maxTickers);
   if (normalized.length === 0) {
     return [];
   }
@@ -179,7 +181,7 @@ export async function runScreen(
   );
 
   const misses = normalized.filter((t) => !fresh.has(t));
-  const fetchResults = await Promise.allSettled(misses.map((t) => fetchFundamentals(t)));
+  const fetchResults = await mapWithConcurrency(misses, DEFAULT_CONCURRENCY, (t) => fetchFundamentals(t));
 
   const fetchedByTicker = new Map<string, Fundamentals>();
   const rowsToUpsert: FundamentalsCacheRow[] = [];
