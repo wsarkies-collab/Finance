@@ -1,4 +1,5 @@
-import { TickerSearchForm } from "@/components/TickerSearchForm";
+import { ScreenerTabs } from "@/components/ScreenerTabs";
+import { getSectorCounts } from "@/lib/momentum-universe";
 
 export default function HomePage() {
   return (
@@ -8,7 +9,7 @@ export default function HomePage() {
         Screens tickers across DCF, Graham Number, PEG, EV/EBITDA, FCF yield, and
         P/B-vs-ROE, then ranks them by a composite score (higher = more attractive).
       </p>
-      <TickerSearchForm />
+      <ScreenerTabs sectorCounts={getSectorCounts()} />
     </>
   );
 }
