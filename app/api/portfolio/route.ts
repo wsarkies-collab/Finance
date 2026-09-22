@@ -2,9 +2,10 @@ import { getPortfolioAnalysis } from "@/lib/portfolio-service";
 
 const TICKER_PATTERN = /^[A-Z^.-]{1,10}$/i;
 
-// Up to ~30 tickers plus a couple of benchmark fetches, each an independent live
-// price-history call — slower than the default Vercel function budget.
-export const maxDuration = 30;
+// Up to ~30 tickers (each now also fetching fundamentals, for sector) plus a couple of
+// benchmark fetches and 11 fixed sector-ETF fetches (for the diversification pick) — every
+// one an independent live call, slower than the default Vercel function budget.
+export const maxDuration = 45;
 
 export async function GET(request: Request) {
   const url = new URL(request.url);

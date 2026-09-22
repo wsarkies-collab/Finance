@@ -2,13 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   MIN_OVERLAP_WEEKS,
   alignByDate,
+  alignReturnMapWithSeries,
   benchmarkFor,
   buildCovariance,
   computeBeta,
+  correlation,
+  correlationFromCovariance,
   minVarianceWeights,
   portfolioVolatility,
   projectToSimplex,
   returnsFromCloses,
+  weightedReturnSeries,
   type PriceSeries,
 } from "./portfolio";
 
@@ -141,5 +145,79 @@ describe("projectToSimplex", () => {
     const w = projectToSimplex([0.5, 0.3, -0.1]);
     expect(w.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 6);
     for (const x of w) expect(x).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("correlationFromCovariance", () => {
+  it("is always 1 on the diagonal", () => {
+    const cov = [
+      [0.04, 0.01, -0.005],
+      [0.01, 0.09, 0.02],
+      [-0.005, 0.02, 0.16],
+    ];
+    const corr = correlationFromCovariance(cov);
+    for (let i = 0; i < 3; i++) expect(corr[i][i]).toBeCloseTo(1);
+  });
+
+  it("is symmetric and within [-1, 1]", () => {
+    const cov = [
+      [0.04, 0.01],
+      [0.01, 0.09],
+    ];
+    const corr = correlationFromCovariance(cov);
+    expect(corr[0][1]).toBeCloseTo(corr[1][0]);
+    expect(corr[0][1]).toBeGreaterThanOrEqual(-1);
+    expect(corr[0][1]).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("weightedReturnSeries", () => {
+  it("computes the portfolio's own combined return per period", () => {
+    const alignedReturns = [
+      [0.1, -0.1],
+      [0.02, 0.02],
+    ];
+    const weights = [0.5, 0.5];
+    const combined = weightedReturnSeries(alignedReturns, weights);
+    expect(combined[0]).toBeCloseTo(0.06);
+    expect(combined[1]).toBeCloseTo(-0.04);
+  });
+});
+
+describe("correlation", () => {
+  it("is 1 for perfectly correlated series", () => {
+    const a = [0.01, -0.02, 0.03, 0.01, -0.01, 0.02, 0.0, 0.015];
+    expect(correlation(a, a)).toBeCloseTo(1);
+  });
+
+  it("is -1 for perfectly anti-correlated series", () => {
+    const a = [0.01, -0.02, 0.03, 0.01, -0.01, 0.02, 0.0, 0.015];
+    const b = a.map((x) => -x);
+    expect(correlation(a, b)).toBeCloseTo(-1);
+  });
+
+  it("is 0 when either series has no variance", () => {
+    const a = [0.01, -0.02, 0.03, 0.01];
+    const flat = [0, 0, 0, 0];
+    expect(correlation(a, flat)).toBe(0);
+  });
+});
+
+describe("alignReturnMapWithSeries", () => {
+  it("inner-joins a derived return map against a fresh series by real date", () => {
+    // Mirrors alignByDate's own cross-calendar case: the derived map only has 1/2 and 1/4,
+    // the series trades on 1/1-1/3 — only 1/2 is shared (1/4 has no matching series date).
+    const derivedMap = new Map([
+      ["2020-01-02", 0.05],
+      ["2020-01-04", 0.03],
+    ]);
+    const series: PriceSeries = {
+      dates: ["2020-01-01", "2020-01-02", "2020-01-03"],
+      closes: [100, 110, 121],
+    };
+    const { a, b, n } = alignReturnMapWithSeries(derivedMap, series);
+    expect(n).toBe(1);
+    expect(a[0]).toBeCloseTo(0.05);
+    expect(b[0]).toBeCloseTo(0.1);
   });
 });

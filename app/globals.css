@@ -786,6 +786,152 @@ form.watchlist-row button {
   margin-top: 0.15rem;
 }
 
+.sector-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  font-size: 0.88rem;
+}
+
+.sector-bar-name {
+  flex: 0 0 160px;
+}
+
+.sector-bar-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--border);
+  overflow: hidden;
+  position: relative;
+}
+
+.sector-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 5px;
+  background: var(--accent);
+}
+
+.sector-bar-fill.flagged {
+  background: var(--warning);
+}
+
+.sector-bar-val {
+  flex: 0 0 52px;
+  text-align: right;
+  font-weight: 600;
+}
+
+table.corr {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+table.corr th,
+table.corr td {
+  padding: 0.4rem 0.55rem;
+  text-align: center;
+  border: 1px solid var(--border);
+  min-width: 52px;
+}
+
+table.corr th {
+  font-weight: 600;
+  background: transparent;
+}
+
+table.corr td.diag {
+  font-weight: 700;
+  color: var(--muted);
+  background: transparent;
+}
+
+.corr-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0.5rem 0 1rem;
+  flex-wrap: wrap;
+}
+
+.corr-legend .swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.sector-pick {
+  border: 1px solid var(--positive);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.sector-pick .stat-label {
+  color: var(--positive);
+}
+
+.sector-pick .stat-value {
+  font-size: 1.3rem;
+}
+
+.sector-rank-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  font-size: 0.85rem;
+}
+
+.sector-rank-row.held {
+  opacity: 0.55;
+}
+
+.sector-rank-name {
+  flex: 0 0 200px;
+}
+
+.sector-rank-tag {
+  font-size: 0.7rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 6px;
+  margin-left: 0.4rem;
+}
+
+.sector-rank-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+  position: relative;
+}
+
+.sector-rank-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: var(--muted);
+}
+
+.sector-rank-fill.candidate {
+  background: var(--positive);
+}
+
+.sector-rank-val {
+  flex: 0 0 48px;
+  text-align: right;
+  font-weight: 600;
+}
+
 .info-btn {
   display: inline-flex;
   align-items: center;
