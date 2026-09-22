@@ -26,6 +26,24 @@ export interface PriceSeries {
   closes: number[];
 }
 
+/** Sector -> representative SPDR sector ETF, used to estimate how correlated a whole sector
+ * is with a portfolio without fetching every ticker in it. Keyed by the same sector strings
+ * lib/momentum-universe.ts uses (yfinance's own taxonomy), so a ticker's sector is consistent
+ * across every screen in the app. */
+export const SECTOR_ETF: Record<string, string> = {
+  Technology: "XLK",
+  "Financial Services": "XLF",
+  Healthcare: "XLV",
+  Energy: "XLE",
+  "Basic Materials": "XLB",
+  "Consumer Cyclical": "XLY",
+  "Consumer Defensive": "XLP",
+  "Communication Services": "XLC",
+  Industrials: "XLI",
+  Utilities: "XLU",
+  "Real Estate": "XLRE",
+};
+
 /** Simple period-over-period returns; `returns[i]` is the return as of `dates[i]`. One
  * element shorter than `closes`/`dates`. */
 export function returnsFromCloses(closes: number[]): number[] {
@@ -36,7 +54,9 @@ export function returnsFromCloses(closes: number[]): number[] {
   return returns;
 }
 
-function returnsByDate(series: PriceSeries): Map<string, number> {
+/** Period-over-period returns keyed by the date they occurred on — the join key every
+ * multi-series function below uses instead of trailing array position. */
+export function returnsByDate(series: PriceSeries): Map<string, number> {
   const map = new Map<string, number>();
   for (let i = 1; i < series.closes.length; i++) {
     const prev = series.closes[i - 1];
@@ -48,8 +68,9 @@ function returnsByDate(series: PriceSeries): Map<string, number> {
 /** Aligns N price series by actual shared calendar date (inner join) — not by trailing
  * array position, which silently mismatches once series don't share a trading calendar
  * (e.g. mixing US and ASX tickers, or tickers with different listing histories). Returns
- * one returns array per input series, all the same length and date-ordered. */
-export function alignByDate(seriesList: PriceSeries[]): { returns: number[][]; n: number } {
+ * one returns array per input series, all the same length and date-ordered, plus the
+ * dates themselves (e.g. to key a derived series like a portfolio's combined return). */
+export function alignByDate(seriesList: PriceSeries[]): { returns: number[][]; dates: string[]; n: number } {
   const perSeries = seriesList.map(returnsByDate);
   let commonDates = [...perSeries[0].keys()];
   for (let i = 1; i < perSeries.length; i++) {
@@ -58,7 +79,23 @@ export function alignByDate(seriesList: PriceSeries[]): { returns: number[][]; n
   }
   commonDates.sort();
   const returns = perSeries.map((byDate) => commonDates.map((d) => byDate.get(d)!));
-  return { returns, n: commonDates.length };
+  return { returns, dates: commonDates, n: commonDates.length };
+}
+
+/** Joins a date-keyed derived return series (e.g. a portfolio's own combined returns) against
+ * a fresh price series' own returns, by actual date — the same principle as alignByDate, for
+ * when one side isn't a raw price series (so alignByDate itself doesn't apply). */
+export function alignReturnMapWithSeries(
+  returnsByDateMap: Map<string, number>,
+  series: PriceSeries,
+): { a: number[]; b: number[]; n: number } {
+  const seriesReturns = returnsByDate(series);
+  const commonDates = [...returnsByDateMap.keys()].filter((d) => seriesReturns.has(d)).sort();
+  return {
+    a: commonDates.map((d) => returnsByDateMap.get(d)!),
+    b: commonDates.map((d) => seriesReturns.get(d)!),
+    n: commonDates.length,
+  };
 }
 
 /** Annualized sample covariance matrix from already-aligned per-ticker return arrays (all
@@ -81,6 +118,41 @@ export function buildCovariance(alignedReturns: number[][], periodsPerYear = PER
     }
   }
   return cov;
+}
+
+/** Correlation matrix implied by an existing covariance matrix — corr[i][j] = cov[i][j] /
+ * sqrt(cov[i][i] * cov[j][j]). Always 1 on the diagonal, no new data needed. */
+export function correlationFromCovariance(cov: number[][]): number[][] {
+  return cov.map((row, i) => row.map((v, j) => v / Math.sqrt(cov[i][i] * cov[j][j])));
+}
+
+/** The portfolio's own realized return per aligned period at the given weights — i.e. what
+ * the portfolio itself actually returned each period, not any one holding. */
+export function weightedReturnSeries(alignedReturns: number[][], weights: number[]): number[] {
+  const len = alignedReturns[0]?.length ?? 0;
+  const out: number[] = [];
+  for (let k = 0; k < len; k++) {
+    let sum = 0;
+    for (let i = 0; i < alignedReturns.length; i++) sum += weights[i] * alignedReturns[i][k];
+    out.push(sum);
+  }
+  return out;
+}
+
+/** Plain Pearson correlation of two already same-length, aligned return arrays. */
+export function correlation(a: number[], b: number[]): number {
+  const n = a.length;
+  const meanA = a.reduce((s, x) => s + x, 0) / n;
+  const meanB = b.reduce((s, x) => s + x, 0) / n;
+  let cov = 0;
+  let varA = 0;
+  let varB = 0;
+  for (let k = 0; k < n; k++) {
+    cov += (a[k] - meanA) * (b[k] - meanB);
+    varA += (a[k] - meanA) ** 2;
+    varB += (b[k] - meanB) ** 2;
+  }
+  return varA > 0 && varB > 0 ? cov / Math.sqrt(varA * varB) : 0;
 }
 
 function matVec(m: number[][], v: number[]): number[] {

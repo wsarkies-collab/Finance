@@ -16,6 +16,8 @@ function fmtPct(n: number): string {
   return `${(n * 100).toFixed(1)}%`;
 }
 
+const SECTOR_CONCENTRATION_THRESHOLD = 0.35;
+
 export function PortfolioCalculatorForm() {
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<TickerMatch[]>([]);
@@ -114,6 +116,15 @@ export function PortfolioCalculatorForm() {
   const sharpe = analysis && analysis.portfolioVol > 0 ? (portfolioExpectedReturn - rf) / analysis.portfolioVol : 0;
   const ewSharpe = analysis && analysis.ewVol > 0 ? (ewExpectedReturn - rf) / analysis.ewVol : 0;
   const riskReduction = analysis && analysis.ewVol > 0 ? (analysis.ewVol - analysis.portfolioVol) / analysis.ewVol : 0;
+
+  const sortedSectorConcentration = analysis
+    ? [...analysis.sectorConcentration].sort((a, b) => b.weight - a.weight)
+    : [];
+  const rankedDiversification = analysis
+    ? [...analysis.sectorDiversification].sort((a, b) => a.correlation - b.correlation)
+    : [];
+  const bestDiversifier = rankedDiversification.find((r) => !r.held) ?? null;
+  const maxDiversificationCorr = Math.max(1e-9, ...rankedDiversification.map((r) => r.correlation));
 
   function nameFor(ticker: string): string | null {
     const chip = chips.find((c) => c.symbol === ticker);
@@ -276,6 +287,164 @@ export function PortfolioCalculatorForm() {
             </table>
           </div>
 
+          <div className="section" style={{ borderBottom: "none", marginBottom: 0 }}>
+            <h2>Portfolio diversification</h2>
+            <p className="muted metric-explanation">
+              The allocation above minimizes variance, but &quot;low risk on paper&quot; and &quot;well-diversified&quot;
+              aren&apos;t automatically the same thing — a solver can end up concentrated in one industry, or
+              holding several tickers that are really just the same bet in disguise, if that happens to minimize the
+              numbers. These views show you which of those is actually happening for the tickers you picked.
+            </p>
+
+            <h3 style={{ fontSize: "0.92rem", marginBottom: "0.5rem" }}>Sector concentration</h3>
+            <p className="muted metric-explanation" style={{ marginBottom: "0.75rem" }}>
+              Share of your total allocation sitting in each ticker&apos;s sector. A sector above{" "}
+              <b>{fmtPct(SECTOR_CONCENTRATION_THRESHOLD)}</b> of the portfolio is flagged — not necessarily wrong,
+              but worth knowing before you commit real money.
+            </p>
+            {sortedSectorConcentration.map((s) => (
+              <div className="sector-bar-row" key={s.sector}>
+                <span className="sector-bar-name">
+                  {s.sector}
+                  {s.weight >= SECTOR_CONCENTRATION_THRESHOLD ? (
+                    <span style={{ color: "var(--warning)", fontSize: "0.75rem" }}> &#9888;</span>
+                  ) : null}
+                </span>
+                <div className="sector-bar-track">
+                  <div
+                    className={`sector-bar-fill${s.weight >= SECTOR_CONCENTRATION_THRESHOLD ? " flagged" : ""}`}
+                    style={{ width: `${Math.round(s.weight * 100)}%` }}
+                  />
+                </div>
+                <span className="sector-bar-val">{fmtPct(s.weight)}</span>
+              </div>
+            ))}
+            {sortedSectorConcentration.every((s) => s.weight < SECTOR_CONCENTRATION_THRESHOLD) ? (
+              <p className="muted" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
+                No sector exceeds the {fmtPct(SECTOR_CONCENTRATION_THRESHOLD)} guideline for this allocation.
+              </p>
+            ) : null}
+
+            <h3 style={{ fontSize: "0.92rem", margin: "1.25rem 0 0.5rem" }}>Correlation matrix</h3>
+            <p className="muted metric-explanation" style={{ marginBottom: "0.5rem" }}>
+              How closely each pair of tickers&apos; weekly returns moved together over the same{" "}
+              {analysis.overlapWeeks} weeks used to build the covariance matrix above, from &minus;1 (moved in
+              exactly opposite directions) to +1 (moved in lockstep). The diagonal is always 1.00 &mdash; a ticker
+              perfectly correlates with itself. Two tickers with a high positive correlation don&apos;t reduce risk
+              much even if you hold both; negative or near-zero correlations are where the actual diversification
+              benefit above is coming from.
+            </p>
+            {analysis.correlationMatrix ? (
+              <>
+                <div className="corr-legend">
+                  <span>
+                    <span
+                      className="swatch"
+                      style={{ background: "color-mix(in srgb, var(--negative) 55%, transparent)" }}
+                    />{" "}
+                    highly correlated (less diversification benefit)
+                  </span>
+                  <span>
+                    <span className="swatch" style={{ background: "transparent", border: "1px solid var(--border)" }} />{" "}
+                    near zero
+                  </span>
+                  <span>
+                    <span
+                      className="swatch"
+                      style={{ background: "color-mix(in srgb, var(--positive) 55%, transparent)" }}
+                    />{" "}
+                    negatively correlated (diversifying)
+                  </span>
+                </div>
+                <div className="table-scroll">
+                  <table className="corr">
+                    <thead>
+                      <tr>
+                        <th></th>
+                        {analysis.tickers.map((t) => (
+                          <th key={t.ticker}>{t.ticker}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analysis.tickers.map((ti, i) => (
+                        <tr key={ti.ticker}>
+                          <th style={{ textAlign: "left" }}>{ti.ticker}</th>
+                          {analysis.tickers.map((tj, j) => {
+                            const v = analysis.correlationMatrix![i][j];
+                            const isDiag = i === j;
+                            return (
+                              <td
+                                key={tj.ticker}
+                                className={isDiag ? "diag" : undefined}
+                                style={
+                                  isDiag
+                                    ? undefined
+                                    : {
+                                        background: `color-mix(in srgb, ${v >= 0 ? "var(--negative)" : "var(--positive)"} ${Math.round(Math.abs(v) * 65)}%, transparent)`,
+                                      }
+                                }
+                              >
+                                {v.toFixed(2)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : null}
+
+            <h3 style={{ fontSize: "0.92rem", margin: "1.5rem 0 0.5rem" }}>
+              Which sector would diversify this portfolio further?
+            </h3>
+            <p className="muted metric-explanation" style={{ marginBottom: "0.75rem" }}>
+              For each of 11 sectors, this correlates a representative sector fund&apos;s weekly returns against{" "}
+              <b>your portfolio&apos;s own historical return stream</b> (at the weights above) &mdash; not against
+              any single ticker. The sector with the lowest correlation has moved most independently of what you
+              already hold, which is exactly what reduces risk when you add it. Sectors you already hold are shown
+              for context, but adding more of a sector you&apos;re already in doesn&apos;t diversify you further
+              even if its correlation happens to look low.
+            </p>
+            {bestDiversifier ? (
+              <div className="sector-pick">
+                <span className="stat-label">Best sector to add for further diversification</span>
+                <span className="stat-value">{bestDiversifier.sector}</span>
+                <span className="stat-sub">
+                  {bestDiversifier.correlation.toFixed(2)} correlation to your portfolio&apos;s own return history —
+                  the lowest among sectors you don&apos;t already hold
+                </span>
+              </div>
+            ) : null}
+            {rankedDiversification.map((r) => (
+              <div className={`sector-rank-row${r.held ? " held" : ""}`} key={r.sector}>
+                <span className="sector-rank-name">
+                  {r.sector}
+                  {r.held ? <span className="sector-rank-tag">already held</span> : null}
+                </span>
+                <div className="sector-rank-track">
+                  <div
+                    className={`sector-rank-fill${r.held ? "" : " candidate"}`}
+                    style={{ width: `${Math.round((r.correlation / maxDiversificationCorr) * 100)}%` }}
+                  />
+                </div>
+                <span className="sector-rank-val">{r.correlation.toFixed(2)}</span>
+              </div>
+            ))}
+            {rankedDiversification.length > 0 ? (
+              <p className="muted metric-explanation" style={{ marginTop: "0.75rem" }}>
+                Each sector is represented by a broad, liquid real-world proxy fund (e.g. Technology by XLK,
+                Utilities by XLU) rather than every individual ticker in that sector — the standard, practical way
+                to measure sector-level diversification without needing hundreds of extra price-history fetches.
+                This is a statistical diversification signal, not investment advice on its own: a low-correlation
+                sector can still be a bad investment on its own fundamentals, and correlation measured
+                historically isn&apos;t guaranteed to hold going forward.
+              </p>
+            ) : null}
+          </div>
+
           <div className="projections-panel">
             <h2 style={{ fontSize: "1.05rem" }}>Risk-adjusted return — Sharpe ratio</h2>
             <p className="muted metric-explanation">
@@ -401,6 +570,12 @@ export function PortfolioCalculatorForm() {
               <li>
                 Beta is computed the same way, against each ticker&apos;s home-market benchmark (S&amp;P 500 or ASX
                 200 by ticker suffix).
+              </li>
+              <li>
+                The correlation matrix above is the same covariance matrix, normalized — no new data fetch needed.
+                Sector concentration comes from each ticker&apos;s live fundamentals lookup (the same one the
+                valuation and momentum screens already use). The sector diversification pick correlates 11 real
+                sector-fund proxies against your portfolio&apos;s own realized return stream.
               </li>
               <li>Every calculation here is live — nothing is cached or pre-fetched, so it reflects current prices each time you calculate.</li>
             </ul>
