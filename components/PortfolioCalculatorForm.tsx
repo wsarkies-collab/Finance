@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { savePortfolio } from "@/app/portfolio/actions";
 import type { PortfolioAnalysis } from "@/lib/portfolio-service";
 
 interface TickerMatch {
@@ -18,18 +19,31 @@ function fmtPct(n: number): string {
 
 const SECTOR_CONCENTRATION_THRESHOLD = 0.35;
 
-export function PortfolioCalculatorForm() {
+export function PortfolioCalculatorForm({ savedTickers = [] }: { savedTickers?: string[] }) {
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<TickerMatch[]>([]);
   const [searching, setSearching] = useState(false);
-  const [chips, setChips] = useState<TickerMatch[]>([]);
+  const [chips, setChips] = useState<TickerMatch[]>(() =>
+    savedTickers.map((symbol) => ({ symbol, name: symbol, exchange: "" })),
+  );
   const [amount, setAmount] = useState("10000");
   const [rfPct, setRfPct] = useState("4");
   const [erpPct, setErpPct] = useState("5");
   const [analysis, setAnalysis] = useState<PortfolioAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function handleSave() {
+    setSaveState("saving");
+    try {
+      await savePortfolio(chips.map((c) => c.symbol));
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
+  }
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -176,6 +190,22 @@ export function PortfolioCalculatorForm() {
             </span>
           ))}
         </div>
+
+        <button
+          type="button"
+          className="future-projections-btn"
+          onClick={handleSave}
+          disabled={saveState === "saving"}
+          style={{ marginTop: 0, marginBottom: "1rem" }}
+        >
+          {saveState === "saving" ? "Saving…" : "Save portfolio"}
+        </button>
+        {saveState === "saved" ? <span className="muted" style={{ marginLeft: "0.75rem" }}>Saved</span> : null}
+        {saveState === "error" ? (
+          <span className="error-banner" style={{ marginLeft: "0.75rem" }}>
+            Could not save — try again
+          </span>
+        ) : null}
 
         <label className="ticker-search-hint" htmlFor="portfolioAmount" style={{ display: "block", marginBottom: "0.3rem" }}>
           Total investment amount ($)

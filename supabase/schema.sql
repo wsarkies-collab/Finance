@@ -55,6 +55,25 @@ create policy "watchlists_insert_own" on public.watchlists for insert
 create policy "watchlists_delete_own" on public.watchlists for delete
   to authenticated using (auth.uid() = user_id);
 
+create table public.portfolio_tickers (
+  id        uuid primary key default gen_random_uuid(),
+  user_id   uuid not null references auth.users(id) on delete cascade,
+  ticker    text not null,
+  added_at  timestamptz not null default now(),
+  unique (user_id, ticker)
+);
+
+create index portfolio_tickers_user_id_idx on public.portfolio_tickers(user_id);
+
+alter table public.portfolio_tickers enable row level security;
+
+create policy "portfolio_tickers_select_own" on public.portfolio_tickers for select
+  to authenticated using (auth.uid() = user_id);
+create policy "portfolio_tickers_insert_own" on public.portfolio_tickers for insert
+  to authenticated with check (auth.uid() = user_id);
+create policy "portfolio_tickers_delete_own" on public.portfolio_tickers for delete
+  to authenticated using (auth.uid() = user_id);
+
 -- If you already ran an earlier version of this file (before sector/bank metrics were
 -- added), run this block instead of the create table above — it's safe to run either way.
 alter table public.fundamentals_cache add column if not exists sector text;
