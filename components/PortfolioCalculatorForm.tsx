@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { savePortfolio } from "@/app/portfolio/actions";
 import type { PortfolioAnalysis } from "@/lib/portfolio-service";
 
 interface TickerMatch {
@@ -18,32 +17,50 @@ function fmtPct(n: number): string {
 }
 
 const SECTOR_CONCENTRATION_THRESHOLD = 0.35;
+// Browser-local only — no login/account involved. Just enough to survive switching tabs or
+// reloading the page; not shared across devices or browsers.
+const STORAGE_KEY = "portfolioCalc.tickers";
 
-export function PortfolioCalculatorForm({ savedTickers = [] }: { savedTickers?: string[] }) {
+function loadSavedTickers(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export function PortfolioCalculatorForm() {
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<TickerMatch[]>([]);
   const [searching, setSearching] = useState(false);
-  const [chips, setChips] = useState<TickerMatch[]>(() =>
-    savedTickers.map((symbol) => ({ symbol, name: symbol, exchange: "" })),
-  );
+  const [chips, setChips] = useState<TickerMatch[]>([]);
   const [amount, setAmount] = useState("10000");
   const [rfPct, setRfPct] = useState("4");
   const [erpPct, setErpPct] = useState("5");
   const [analysis, setAnalysis] = useState<PortfolioAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function handleSave() {
-    setSaveState("saving");
-    try {
-      await savePortfolio(chips.map((c) => c.symbol));
-      setSaveState("saved");
-    } catch {
-      setSaveState("error");
+  // Load once on mount (localStorage isn't available during server rendering).
+  useEffect(() => {
+    const saved = loadSavedTickers();
+    if (saved.length > 0) {
+      setChips(saved.map((symbol) => ({ symbol, name: symbol, exchange: "" })));
     }
-  }
+  }, []);
+
+  // Persist on every change so switching tabs (or reloading) doesn't lose the ticker list.
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(chips.map((c) => c.symbol)));
+    } catch {
+      // Best-effort only — a private-window/storage-blocked browser just won't remember it.
+    }
+  }, [chips]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -191,21 +208,7 @@ export function PortfolioCalculatorForm({ savedTickers = [] }: { savedTickers?: 
           ))}
         </div>
 
-        <button
-          type="button"
-          className="future-projections-btn"
-          onClick={handleSave}
-          disabled={saveState === "saving"}
-          style={{ marginTop: 0, marginBottom: "1rem" }}
-        >
-          {saveState === "saving" ? "Saving…" : "Save portfolio"}
-        </button>
-        {saveState === "saved" ? <span className="muted" style={{ marginLeft: "0.75rem" }}>Saved</span> : null}
-        {saveState === "error" ? (
-          <span className="error-banner" style={{ marginLeft: "0.75rem" }}>
-            Could not save — try again
-          </span>
-        ) : null}
+        <p className="ticker-search-hint">Your tickers are remembered in this browser, so switching tabs won&apos;t lose them.</p>
 
         <label className="ticker-search-hint" htmlFor="portfolioAmount" style={{ display: "block", marginBottom: "0.3rem" }}>
           Total investment amount ($)
