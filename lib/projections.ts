@@ -5,31 +5,22 @@
  */
 
 import { dcfValuePerShare } from "./valuation";
-import { resolveGrowthRate } from "./screener";
+import { MAX_GROWTH_RATE, MIN_GROWTH_RATE, resolveGrowthRate } from "./screener";
 import type { Fundamentals } from "./types";
 
 export const PROJECTION_YEARS = 5;
 export const PROJECTION_DISCOUNT_RATE = 0.09; // matches the existing DCF's default
 
-// Raw trailing EPS growth can't be trusted uncapped over a 5-year compounding horizon — we
-// found two real failures building this: LYC.AX's 5920% trailing growth produced a nonsensical
-// DCF, and RIO.AX's 46.9% exceeds PROJECTION_DISCOUNT_RATE, which makes the Gordon Growth
-// Model's denominator negative. Clamping keeps genuinely different companies at different
-// (bounded) assumptions rather than flattening everyone to one fixed number.
-//
-// PROJECTION_MAX_GROWTH must stay comfortably below PROJECTION_DISCOUNT_RATE, not just under
-// it — this was caught by testing against real RIO.AX data: an earlier version capped growth
-// at 15%, which is *itself* above the 9% discount rate, so DDM was silently null for every
-// stock that hit the cap (exactly the failure this cap exists to prevent). Even short of that,
-// growth approaching the discount rate blows the Gordon Growth denominator (r-g) toward zero,
-// producing an enormous but technically "valid" number — so this leaves real headroom, not
-// just enough to avoid the guard.
-export const PROJECTION_MIN_GROWTH = -0.1;
-export const PROJECTION_MAX_GROWTH = 0.06;
+// Re-exported from lib/screener.ts, which now applies this same clamp directly inside
+// resolveGrowthRate (see the comment there) — kept under these names too since that's what
+// callers here (and this file's own tests) already use.
+export const PROJECTION_MIN_GROWTH = MIN_GROWTH_RATE;
+export const PROJECTION_MAX_GROWTH = MAX_GROWTH_RATE;
 
+/** resolveGrowthRate already clamps to [MIN_GROWTH_RATE, MAX_GROWTH_RATE] — this wrapper just
+ * gives that value a name specific to the multi-year projection call sites below. */
 export function projectionGrowthRate(epsGrowthPct: number | null, override?: number | null): number {
-  const raw = resolveGrowthRate(epsGrowthPct, override);
-  return Math.min(PROJECTION_MAX_GROWTH, Math.max(PROJECTION_MIN_GROWTH, raw));
+  return resolveGrowthRate(epsGrowthPct, override);
 }
 
 function growForward(value0: number, growth: number, years: number): number[] {
