@@ -597,6 +597,18 @@ export function PortfolioCalculatorForm() {
               </>
             )}
           </div>
+          {maxsharpe ? (
+            <div className="stat-grid">
+              <div className="stat-tile" style={{ width: "100%" }}>
+                <span className="stat-label">Portfolio return (CAPM)</span>
+                <span className="stat-value">{fmtPct(portReturn)}</span>
+                <span className="stat-sub">
+                  weighted at current weights — the CAPM expected-return estimate this mode uses as a direct input
+                  when solving for the Sharpe-maximizing allocation
+                </span>
+              </div>
+            </div>
+          ) : null}
           {analysis!.droppedTickers.length > 0 ? (
             <p className="muted" style={{ marginBottom: "0.5rem" }}>
               No data for: {analysis!.droppedTickers.join(", ")}
