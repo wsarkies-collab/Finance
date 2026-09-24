@@ -3,11 +3,14 @@ import {
   MIN_OVERLAP_WEEKS,
   alignByDate,
   alignReturnMapWithSeries,
+  alignReturnSeriesByDate,
   benchmarkFor,
   buildCovariance,
   computeBeta,
   correlation,
   correlationFromCovariance,
+  frontierWeights,
+  maxSharpeWeights,
   minVarianceWeights,
   portfolioVolatility,
   projectToSimplex,
@@ -200,6 +203,83 @@ describe("correlation", () => {
     const a = [0.01, -0.02, 0.03, 0.01];
     const flat = [0, 0, 0, 0];
     expect(correlation(a, flat)).toBe(0);
+  });
+});
+
+describe("maxSharpeWeights", () => {
+  const cov = [
+    [0.04, 0.01, 0.0],
+    [0.01, 0.09, 0.02],
+    [0.0, 0.02, 0.16],
+  ];
+  const mu = [0.08, 0.11, 0.14];
+  const rf = 0.02;
+
+  function sharpeOf(weights: number[]): number {
+    const ret = weights.reduce((s, w, i) => s + w * mu[i], 0);
+    const vol = portfolioVolatility(cov, weights);
+    return (ret - rf) / vol;
+  }
+
+  it("returns non-negative weights that sum to 1", () => {
+    const w = maxSharpeWeights(cov, mu, rf);
+    expect(w.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 5);
+    for (const x of w) expect(x).toBeGreaterThanOrEqual(-1e-9);
+  });
+
+  it("achieves a higher Sharpe ratio than equal weighting or the minimum-variance portfolio", () => {
+    const w = maxSharpeWeights(cov, mu, rf);
+    const equalWeights = [1 / 3, 1 / 3, 1 / 3];
+    const gmvWeights = minVarianceWeights(cov);
+    expect(sharpeOf(w)).toBeGreaterThan(sharpeOf(equalWeights));
+    expect(sharpeOf(w)).toBeGreaterThan(sharpeOf(gmvWeights));
+  });
+});
+
+describe("frontierWeights", () => {
+  const cov = [
+    [0.04, 0.01, 0.0],
+    [0.01, 0.09, 0.02],
+    [0.0, 0.02, 0.16],
+  ];
+  const mu = [0.08, 0.11, 0.14];
+  const rf = 0.02;
+  const wGmv = minVarianceWeights(cov);
+  const wMs = maxSharpeWeights(cov, mu, rf);
+  const rGmv = wGmv.reduce((s, w, i) => s + w * mu[i], 0);
+  const rMs = wMs.reduce((s, w, i) => s + w * mu[i], 0);
+
+  it("returns non-negative weights that sum to 1 and hit the target return", () => {
+    const target = rGmv + 0.5 * (rMs - rGmv);
+    const w = frontierWeights(cov, mu, target);
+    expect(w.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 4);
+    for (const x of w) expect(x).toBeGreaterThanOrEqual(-1e-9);
+    const achievedReturn = w.reduce((s, x, i) => s + x * mu[i], 0);
+    expect(achievedReturn).toBeCloseTo(target, 3);
+  });
+
+  it("traces a monotonically increasing volatility as the target return rises from GMV to max-Sharpe", () => {
+    let prevVol = -Infinity;
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+      const target = rGmv + t * (rMs - rGmv);
+      const w = frontierWeights(cov, mu, target);
+      const vol = portfolioVolatility(cov, w);
+      expect(vol).toBeGreaterThanOrEqual(prevVol - 1e-6);
+      prevVol = vol;
+    }
+  });
+});
+
+describe("alignReturnSeriesByDate", () => {
+  it("inner-joins two date-keyed return series by real date", () => {
+    const datesA = ["2020-01-01", "2020-01-02", "2020-01-04"];
+    const valuesA = [0.01, 0.02, 0.03];
+    const datesB = ["2020-01-02", "2020-01-03", "2020-01-04"];
+    const valuesB = [0.05, 0.06, 0.07];
+    const { a, b, n } = alignReturnSeriesByDate(datesA, valuesA, datesB, valuesB);
+    expect(n).toBe(2);
+    expect(a).toEqual([0.02, 0.03]);
+    expect(b).toEqual([0.05, 0.07]);
   });
 });
 

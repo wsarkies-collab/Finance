@@ -843,9 +843,7 @@ table.corr th {
 }
 
 table.corr td.diag {
-  font-weight: 700;
-  color: var(--muted);
-  background: transparent;
+  background: var(--border);
 }
 
 .corr-legend {

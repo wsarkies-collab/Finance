@@ -5,15 +5,10 @@ import {
   MIN_OVERLAP_WEEKS,
   SECTOR_ETF,
   alignByDate,
-  alignReturnMapWithSeries,
   benchmarkFor,
   buildCovariance,
   computeBeta,
-  correlation,
-  correlationFromCovariance,
-  minVarianceWeights,
-  portfolioVolatility,
-  weightedReturnSeries,
+  returnsByDate,
   type PriceSeries,
 } from "./portfolio";
 import { fetchPriceHistory, type PriceHistory } from "./price-history-client";
@@ -27,33 +22,37 @@ const DEFAULT_CONCURRENCY = 15;
 export interface PortfolioTickerResult {
   ticker: string;
   sector: string | null;
-  weight: number;
-  ewWeight: number;
   beta: number;
-  individualVol: number;
 }
 
-export interface SectorWeight {
-  sector: string;
-  weight: number;
-}
-
-export interface SectorDiversificationCandidate {
+export interface SectorEtfSeries {
   sector: string;
   etf: string;
-  correlation: number;
-  held: boolean;
+  dates: string[];
+  returns: number[];
 }
 
+/**
+ * Everything needed to compute — client-side, for any of the three optimization modes
+ * (minimum-variance, maximum-Sharpe, or a point on the efficient frontier between them) —
+ * weights, volatility, Sharpe ratio, sector concentration, the correlation matrix, and the
+ * sector-diversification pick, with no further live fetch. Deliberately raw rather than
+ * pre-solved for one mode: the actual weights depend on the risk-free rate and equity risk
+ * premium (via CAPM expected returns) once you're maximizing Sharpe or on the frontier, and
+ * those are user-editable inputs, not fixed at fetch time.
+ */
 export interface PortfolioAnalysis {
   tickers: PortfolioTickerResult[];
-  portfolioVol: number;
-  ewVol: number;
+  covarianceMatrix: number[][];
+  /** Aligned return arrays, same order/index as `tickers`, same dates as `dates`. */
+  alignedReturns: number[][];
+  dates: string[];
   overlapWeeks: number;
   droppedTickers: string[];
-  correlationMatrix: number[][] | null;
-  sectorConcentration: SectorWeight[];
-  sectorDiversification: SectorDiversificationCandidate[];
+  /** Real weekly returns for each of the 11 SPDR sector-fund proxies that could be fetched —
+   * lets the client recompute the sector-diversification pick fresh for whichever mode's
+   * weights (and therefore whichever portfolio return series) is currently active. */
+  sectorEtfReturns: SectorEtfSeries[];
   error?: string;
 }
 
@@ -64,22 +63,22 @@ function toPriceSeries(h: PriceHistory): PriceSeries {
 function emptyResult(overlapWeeks: number, droppedTickers: string[], error: string): PortfolioAnalysis {
   return {
     tickers: [],
-    portfolioVol: 0,
-    ewVol: 0,
+    covarianceMatrix: [],
+    alignedReturns: [],
+    dates: [],
     overlapWeeks,
     droppedTickers,
-    correlationMatrix: null,
-    sectorConcentration: [],
-    sectorDiversification: [],
+    sectorEtfReturns: [],
     error,
   };
 }
 
 /**
- * Fetches live weekly price history (and fundamentals, for sector) for each ticker, solves
- * the Markowitz global minimum-variance portfolio, and computes correlation/concentration/
- * diversification views on top of the same covariance matrix and weights — see lib/portfolio.ts
- * for the pure math. A ticker whose price history can't be fetched is dropped (not
+ * Fetches live weekly price history (and fundamentals, for sector) for each ticker plus the
+ * 11 SPDR sector-fund proxies, and returns the raw covariance matrix, aligned returns, and
+ * sector-ETF return series — see lib/portfolio.ts for the pure math this feeds into
+ * (minVarianceWeights, maxSharpeWeights, frontierWeights, and everything derived from
+ * whichever one is active). A ticker whose price history can't be fetched is dropped (not
  * zero-filled) — same "skip rather than fake it" approach as lib/momentum-service.ts.
  */
 export async function getPortfolioAnalysis(tickers: string[]): Promise<PortfolioAnalysis> {
@@ -121,23 +120,6 @@ export async function getPortfolioAnalysis(tickers: string[]): Promise<Portfolio
     );
   }
 
-  const weights = minVarianceWeights(cov);
-  const pVol = portfolioVolatility(cov, weights);
-  const ewWeights = new Array(okTickers.length).fill(1 / okTickers.length);
-  const ewVol = portfolioVolatility(cov, ewWeights);
-  const correlationMatrix = correlationFromCovariance(cov);
-
-  const sectorWeightMap = new Map<string, number>();
-  okTickers.forEach((t, i) => {
-    const sector = sectorByTicker.get(t) ?? "Unknown";
-    sectorWeightMap.set(sector, (sectorWeightMap.get(sector) ?? 0) + weights[i]);
-  });
-  const sectorConcentration: SectorWeight[] = [...sectorWeightMap.entries()].map(([sector, weight]) => ({
-    sector,
-    weight,
-  }));
-  const heldSectors = new Set(sectorConcentration.filter((s) => s.weight > 0).map((s) => s.sector));
-
   // Beta: a pairwise regression against each ticker's own home-market benchmark, so it aligns
   // per-ticker against that benchmark rather than reusing the whole portfolio's joint overlap.
   const neededBenchmarks = [...new Set(okTickers.map(benchmarkFor))];
@@ -160,42 +142,30 @@ export async function getPortfolioAnalysis(tickers: string[]): Promise<Portfolio
   const results: PortfolioTickerResult[] = okTickers.map((t, i) => ({
     ticker: t,
     sector: sectorByTicker.get(t) ?? null,
-    weight: weights[i],
-    ewWeight: ewWeights[i],
     beta: betas[i],
-    individualVol: Math.sqrt(Math.max(cov[i][i], 0)),
   }));
 
-  // Which sector would most reduce risk if added: correlate each sector's representative
-  // fund against the portfolio's own realized (GMV-weighted) return stream, not any single
-  // holding — lowest correlation among sectors not already held is the best diversifier.
-  const portfolioReturns = weightedReturnSeries(returns, weights);
-  const portfolioReturnByDate = new Map(dates.map((d, i) => [d, portfolioReturns[i]]));
+  // Real weekly returns for each sector-fund proxy — the client joins these against whichever
+  // mode's own weighted return series is currently active to recompute the diversification pick.
   const sectorEntries = Object.entries(SECTOR_ETF);
   const etfFetches = await mapWithConcurrency(sectorEntries, DEFAULT_CONCURRENCY, ([, etf]) => fetchPriceHistory(etf));
-
-  const sectorDiversification: SectorDiversificationCandidate[] = [];
+  const sectorEtfReturns: SectorEtfSeries[] = [];
   etfFetches.forEach((result, i) => {
     if (result.status !== "fulfilled") return;
     const [sector, etf] = sectorEntries[i];
-    const aligned = alignReturnMapWithSeries(portfolioReturnByDate, toPriceSeries(result.value));
-    if (aligned.n < MIN_OVERLAP_WEEKS) return;
-    sectorDiversification.push({
-      sector,
-      etf,
-      correlation: correlation(aligned.a, aligned.b),
-      held: heldSectors.has(sector),
-    });
+    const byDate = returnsByDate(toPriceSeries(result.value));
+    const etfDates = [...byDate.keys()].sort();
+    if (etfDates.length < MIN_OVERLAP_WEEKS) return;
+    sectorEtfReturns.push({ sector, etf, dates: etfDates, returns: etfDates.map((d) => byDate.get(d)!) });
   });
 
   return {
     tickers: results,
-    portfolioVol: pVol,
-    ewVol,
+    covarianceMatrix: cov,
+    alignedReturns: returns,
+    dates,
     overlapWeeks: n,
     droppedTickers,
-    correlationMatrix,
-    sectorConcentration,
-    sectorDiversification,
+    sectorEtfReturns,
   };
 }
