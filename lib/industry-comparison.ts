@@ -6,23 +6,13 @@
  */
 
 import { median } from "./stats";
-import type { ValuationReport } from "./screener";
+import { DISPLAY_METRICS, type DisplayMetric, type ValuationReport } from "./screener";
 
-const COMPARABLE_METRICS = [
-  "dcfMarginOfSafety",
-  "grahamMarginOfSafety",
-  "peg",
-  "evEbitda",
-  "fcfYieldPct",
-  "pbRoeScore",
-  "peRatio",
-  "priceToBook",
-  "roePct",
-  "dividendYieldPct",
-  "netInterestMarginPct",
-] as const;
+const COMPARABLE_METRICS = DISPLAY_METRICS;
 
-export type ComparableMetric = (typeof COMPARABLE_METRICS)[number];
+/** Alias kept for this module's existing external callers (e.g. TickerDetailModal.tsx) —
+ * DisplayMetric (lib/screener.ts) is the single source of truth for this metric set now. */
+export type ComparableMetric = DisplayMetric;
 
 export type PeerMedians = Record<ComparableMetric, number | null>;
 

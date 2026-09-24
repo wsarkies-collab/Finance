@@ -264,6 +264,11 @@ form.watchlist-row button {
   vertical-align: middle;
 }
 
+.badge-warning {
+  background: var(--warning);
+  cursor: help;
+}
+
 .bank-na {
   cursor: help;
   text-decoration: underline dotted;
@@ -478,6 +483,12 @@ form.watchlist-row button {
 .metric-explanation {
   margin: 0.3rem 0 0;
   font-size: 0.85rem;
+}
+
+.metric-detail {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  font-style: italic;
 }
 
 .metric-peer {

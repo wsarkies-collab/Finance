@@ -12,7 +12,18 @@ export interface FormulaExplanation {
 export const FORMULA_EXPLANATIONS: Record<
   Exclude<
     keyof ValuationReport,
-    "ticker" | "price" | "sector" | "industry" | "isBank" | "dcfValue" | "grahamValue" | "compositeScore"
+    | "ticker"
+    | "price"
+    | "sector"
+    | "industry"
+    | "isBank"
+    | "dcfValue"
+    | "dcfGrowthRateUsed"
+    | "dcfGrowthRateRaw"
+    | "dcfGrowthRateClamped"
+    | "grahamValue"
+    | "compositeScore"
+    | "details"
   >,
   FormulaExplanation
 > = {
