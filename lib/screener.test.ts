@@ -72,6 +72,37 @@ describe("scoreTicker", () => {
     expect(report.dcfMarginOfSafety).not.toBeNull();
     expect(Math.abs(report.dcfMarginOfSafety as number)).toBeLessThan(1000);
   });
+
+  it("flags dcfGrowthRateClamped and notes it in the DCF description when the raw growth rate gets capped", () => {
+    const report = scoreTicker(fundamentals("LYC", { epsGrowthPct: 5920.3 }));
+    expect(report.dcfGrowthRateClamped).toBe(true);
+    expect(report.dcfGrowthRateUsed).toBeCloseTo(0.06);
+    expect(report.dcfGrowthRateRaw).toBeCloseTo(59.203);
+    expect(report.details.dcfMarginOfSafety).toContain("raw trailing earnings growth was 5920.3%");
+    expect(report.details.dcfMarginOfSafety).toContain("standardized 6.0%");
+  });
+
+  it("leaves dcfGrowthRateClamped false for a sane growth rate, with no clamp note in the description", () => {
+    const report = scoreTicker(fundamentals("TEST", { epsGrowthPct: 4.0 }));
+    expect(report.dcfGrowthRateClamped).toBe(false);
+    expect(report.dcfGrowthRateUsed).toBeCloseTo(0.04);
+    expect(report.dcfGrowthRateRaw).toBeCloseTo(0.04);
+    expect(report.details.dcfMarginOfSafety).not.toContain("Note:");
+  });
+
+  it("gives an individualized reason (not a generic n/a) when a metric can't be computed", () => {
+    const report = scoreTicker(fundamentals("TEST", { freeCashFlow: null }));
+    expect(report.dcfValue).toBeNull();
+    expect(report.details.dcfMarginOfSafety).toContain("no free cash flow figure is available");
+
+    const noDividend = scoreTicker(fundamentals("TEST", { dividendYield: 0 }));
+    expect(noDividend.details.dividendYieldPct).toBe("TEST does not currently pay a dividend.");
+  });
+
+  it("builds a real individualized description using the ticker's own numbers for a populated metric", () => {
+    const report = scoreTicker(fundamentals("TEST"));
+    expect(report.details.peRatio).toBe("TEST's price of $100.00 divided by trailing EPS of $5.00 gives a P/E of 20.00.");
+  });
 });
 
 describe("resolveGrowthRate", () => {

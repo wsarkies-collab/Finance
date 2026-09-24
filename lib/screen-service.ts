@@ -104,6 +104,9 @@ function emptyReport(ticker: string): ValuationReport {
     isBank: false,
     dcfValue: null,
     dcfMarginOfSafety: null,
+    dcfGrowthRateUsed: null,
+    dcfGrowthRateRaw: null,
+    dcfGrowthRateClamped: false,
     grahamValue: null,
     grahamMarginOfSafety: null,
     peg: null,
@@ -116,6 +119,7 @@ function emptyReport(ticker: string): ValuationReport {
     dividendYieldPct: null,
     netInterestMarginPct: null,
     compositeScore: null,
+    details: {},
   };
 }
 

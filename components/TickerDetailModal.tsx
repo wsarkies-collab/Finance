@@ -94,11 +94,21 @@ export function TickerDetailModal({
     const peerValue = comparison?.medians ? comparison.medians[metric] : null;
     const direction = directionIndicator(metric, value, peerValue);
 
+    const detail = report.details[metric];
+    const showBankNa = value === null && info.bankInapplicable && report.isBank;
+
     return (
       <div key={metric} className="metric-row">
         <div className="metric-row-header">
-          <strong>{info.label}</strong>
-          {value === null ? (
+          <strong>
+            {info.label}
+            {metric === "dcfMarginOfSafety" && report.dcfGrowthRateClamped ? (
+              <span className="badge badge-warning" title="This ticker's raw trailing growth rate was capped before being used in the DCF — see the note below.">
+                Growth capped
+              </span>
+            ) : null}
+          </strong>
+          {showBankNa ? (
             <span className="muted bank-na" title="Not a meaningful metric for banks">
               n/a*
             </span>
@@ -107,6 +117,7 @@ export function TickerDetailModal({
           )}
         </div>
         <p className="muted metric-explanation">{info.explanation}</p>
+        {detail ? <p className="muted metric-detail">{detail}</p> : null}
         {value !== null ? (
           <p className="muted metric-peer">
             {loading
