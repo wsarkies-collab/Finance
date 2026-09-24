@@ -418,7 +418,7 @@ export function PortfolioCalculatorForm() {
                                       }
                                 }
                               >
-                                {v.toFixed(2)}
+                                {isDiag ? "" : v.toFixed(2)}
                               </td>
                             );
                           })}
