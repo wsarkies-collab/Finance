@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { applyCompositeScores, isBankIndustry, scoreTicker } from "./screener";
+import {
+  MAX_GROWTH_RATE,
+  MIN_GROWTH_RATE,
+  applyCompositeScores,
+  isBankIndustry,
+  resolveGrowthRate,
+  scoreTicker,
+} from "./screener";
 import type { Fundamentals } from "./types";
 
 function fundamentals(ticker: string, overrides: Partial<Fundamentals> = {}): Fundamentals {
@@ -53,6 +60,35 @@ describe("scoreTicker", () => {
     expect(report.evEbitda).not.toBeNull();
     expect(report.fcfYieldPct).not.toBeNull();
     expect(report.pbRoeScore).not.toBeNull();
+  });
+
+  it("regression: LYC.AX's real 5920% trailing growth no longer produces a nonsensical DCF margin of safety", () => {
+    // Before this fix, this exact input produced a DCF value of roughly -$821M/share (the
+    // free cash flow compounds by (1+59.2)^5 before the terminal value is even added) —
+    // found live scanning the S&P 500 + ASX 200 valuation screen.
+    const report = scoreTicker(fundamentals("LYC", { epsGrowthPct: 5920.3, freeCashFlow: -50.0 }));
+    expect(report.dcfValue).not.toBeNull();
+    expect(Math.abs(report.dcfValue as number)).toBeLessThan(10_000);
+    expect(report.dcfMarginOfSafety).not.toBeNull();
+    expect(Math.abs(report.dcfMarginOfSafety as number)).toBeLessThan(1000);
+  });
+});
+
+describe("resolveGrowthRate", () => {
+  it("caps a very large positive trailing growth rate to MAX_GROWTH_RATE", () => {
+    expect(resolveGrowthRate(5920.3)).toBe(MAX_GROWTH_RATE);
+  });
+
+  it("caps a large negative trailing growth rate to MIN_GROWTH_RATE", () => {
+    expect(resolveGrowthRate(-80.0)).toBe(MIN_GROWTH_RATE);
+  });
+
+  it("leaves a sane growth rate unchanged", () => {
+    expect(resolveGrowthRate(4.0)).toBeCloseTo(0.04);
+  });
+
+  it("clamps an explicit override too", () => {
+    expect(resolveGrowthRate(10.0, 0.5)).toBe(MAX_GROWTH_RATE);
   });
 });
 

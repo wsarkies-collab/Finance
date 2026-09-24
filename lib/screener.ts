@@ -84,13 +84,29 @@ function marginOfSafety(fairValue: number | null, price: number | null): number 
   return (fairValue - price) / price;
 }
 
-/** Growth-rate assumption used for the (single-point) DCF: the override if given, else the
- * ticker's own trailing EPS growth if it has one, else DEFAULT_GROWTH_RATE. Also the basis
- * for lib/projections.ts's multi-year projections, which additionally clamp this to a sane
- * range — see the comment there for why raw trailing growth can't be trusted uncapped over
- * a multi-year compounding horizon. */
+// Raw trailing EPS growth (yfinance's `earningsGrowth`, typically a single recent-quarter
+// YoY figure) can't be trusted uncapped once it's compounded forward — found via two real
+// failures live on this screen: LYC.AX's 5920% trailing growth produced a DCF value of
+// -$821M/share, and RIO.AX's 46.9% exceeds the DDM's discount rate, making that model's
+// denominator negative. Clamping keeps genuinely different companies at different (bounded)
+// assumptions rather than flattening everyone to one fixed number.
+//
+// MAX_GROWTH_RATE must stay comfortably below the 9% discount rate used elsewhere (dcfValuePerShare's
+// default, PROJECTION_DISCOUNT_RATE), not just under it — growth approaching the discount rate
+// blows the Gordon Growth denominator (r-g) toward zero, producing an enormous but technically
+// "valid" number, which is exactly the failure this cap exists to prevent.
+export const MIN_GROWTH_RATE = -0.1;
+export const MAX_GROWTH_RATE = 0.06;
+
+/** Growth-rate assumption used for the (single-point) DCF, clamped to [MIN_GROWTH_RATE,
+ * MAX_GROWTH_RATE]: the override if given, else the ticker's own trailing EPS growth if it
+ * has one, else DEFAULT_GROWTH_RATE. Also the basis for lib/projections.ts's multi-year
+ * projections. The clamp applies even to an explicit override — there's no live UI path that
+ * relies on bypassing it today, and a DCF this sensitive to its growth input shouldn't accept
+ * an unbounded one from any source. */
 export function resolveGrowthRate(epsGrowthPct: number | null, override?: number | null): number {
-  return override ?? (epsGrowthPct ? epsGrowthPct / 100 : DEFAULT_GROWTH_RATE);
+  const raw = override ?? (epsGrowthPct ? epsGrowthPct / 100 : DEFAULT_GROWTH_RATE);
+  return Math.min(MAX_GROWTH_RATE, Math.max(MIN_GROWTH_RATE, raw));
 }
 
 export function scoreTicker(
