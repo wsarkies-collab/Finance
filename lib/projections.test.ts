@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   PROJECTION_DISCOUNT_RATE,
-  PROJECTION_MAX_GROWTH,
-  PROJECTION_MIN_GROWTH,
   analystTargetPoint,
   projectDCF,
   projectDDM,
@@ -41,24 +39,24 @@ function fundamentals(overrides: Partial<Fundamentals> = {}): Fundamentals {
 }
 
 describe("projectionGrowthRate", () => {
-  it("caps LYC.AX's real 5920% trailing growth to the max", () => {
-    expect(projectionGrowthRate(5920.3)).toBe(PROJECTION_MAX_GROWTH);
+  it("is not clamped: LYC.AX's real 5920% trailing growth passes straight through", () => {
+    expect(projectionGrowthRate(5920.3)).toBeCloseTo(59.203);
   });
 
-  it("caps RIO.AX's real 46.9% trailing growth (which would break the Gordon Growth Model at a 9% discount rate)", () => {
-    expect(projectionGrowthRate(46.9)).toBe(PROJECTION_MAX_GROWTH);
+  it("is not clamped: RIO.AX's real 46.9% trailing growth passes straight through (see projectDDM's own guard for what happens next)", () => {
+    expect(projectionGrowthRate(46.9)).toBeCloseTo(0.469);
   });
 
-  it("caps a large negative growth rate to the min", () => {
-    expect(projectionGrowthRate(-80.0)).toBe(PROJECTION_MIN_GROWTH);
+  it("is not clamped: a large negative growth rate passes straight through", () => {
+    expect(projectionGrowthRate(-80.0)).toBeCloseTo(-0.8);
   });
 
   it("leaves a sane growth rate unchanged", () => {
     expect(projectionGrowthRate(4.0)).toBeCloseTo(0.04);
   });
 
-  it("respects an explicit override even if it's outside the normal default range, then still clamps it", () => {
-    expect(projectionGrowthRate(10.0, 0.5)).toBe(PROJECTION_MAX_GROWTH);
+  it("passes an explicit override straight through too", () => {
+    expect(projectionGrowthRate(10.0, 0.5)).toBe(0.5);
   });
 });
 
@@ -72,14 +70,9 @@ describe("projectDDM", () => {
     expect(values[1]).toBeCloseTo(52.5 * 1.05);
   });
 
-  it("returns all nulls if growth would exceed the discount rate (RIO.AX's real 46.9% case, uncapped)", () => {
+  it("returns all nulls if growth would exceed the discount rate (RIO.AX's real 46.9% case) — the model's own guard, not a cap upstream", () => {
     const values = projectDDM(6.63, 0.469, 0.09, 5);
     expect(values.every((v) => v === null)).toBe(true);
-  });
-
-  it("regression: PROJECTION_MAX_GROWTH must stay below PROJECTION_DISCOUNT_RATE, or every high-growth stock silently gets a null DDM forever", () => {
-    const values = projectDDM(6.63, PROJECTION_MAX_GROWTH, PROJECTION_DISCOUNT_RATE, 5);
-    expect(values.some((v) => v !== null)).toBe(true);
   });
 
   it("returns all nulls for a non-dividend payer", () => {

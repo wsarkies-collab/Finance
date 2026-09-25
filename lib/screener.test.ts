@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  MAX_GROWTH_RATE,
-  MIN_GROWTH_RATE,
-  applyCompositeScores,
-  isBankIndustry,
-  resolveGrowthRate,
-  scoreTicker,
-} from "./screener";
+import { applyCompositeScores, isBankIndustry, resolveGrowthRate, scoreTicker } from "./screener";
 import type { Fundamentals } from "./types";
 
 function fundamentals(ticker: string, overrides: Partial<Fundamentals> = {}): Fundamentals {
@@ -62,32 +55,33 @@ describe("scoreTicker", () => {
     expect(report.pbRoeScore).not.toBeNull();
   });
 
-  it("regression: LYC.AX's real 5920% trailing growth no longer produces a nonsensical DCF margin of safety", () => {
-    // Before this fix, this exact input produced a DCF value of roughly -$821M/share (the
-    // free cash flow compounds by (1+59.2)^5 before the terminal value is even added) —
-    // found live scanning the S&P 500 + ASX 200 valuation screen.
+  it("no longer clamps the growth rate: an extreme trailing growth figure flows straight through into the DCF", () => {
+    // eps_growth_pct is now sourced from annual (not quarterly) EPS growth upstream (see
+    // api/fundamentals.py's _annual_eps_growth_pct), which is far less prone to extreme swings
+    // — so the DCF no longer needs a blanket cap to stay sane in the common case. A synthetic
+    // input this extreme should still flow straight through, uncapped, by design.
     const report = scoreTicker(fundamentals("LYC", { epsGrowthPct: 5920.3, freeCashFlow: -50.0 }));
+    expect(report.dcfGrowthRate).toBeCloseTo(59.203);
     expect(report.dcfValue).not.toBeNull();
-    expect(Math.abs(report.dcfValue as number)).toBeLessThan(10_000);
-    expect(report.dcfMarginOfSafety).not.toBeNull();
-    expect(Math.abs(report.dcfMarginOfSafety as number)).toBeLessThan(1000);
+    expect(Math.abs(report.dcfValue as number)).toBeGreaterThan(1_000_000);
   });
 
-  it("flags dcfGrowthRateClamped and notes it in the DCF description when the raw growth rate gets capped", () => {
-    const report = scoreTicker(fundamentals("LYC", { epsGrowthPct: 5920.3 }));
-    expect(report.dcfGrowthRateClamped).toBe(true);
-    expect(report.dcfGrowthRateUsed).toBeCloseTo(0.06);
-    expect(report.dcfGrowthRateRaw).toBeCloseTo(59.203);
-    expect(report.details.dcfMarginOfSafety).toContain("raw trailing earnings growth was 5920.3%");
-    expect(report.details.dcfMarginOfSafety).toContain("standardized 6.0%");
-  });
-
-  it("leaves dcfGrowthRateClamped false for a sane growth rate, with no clamp note in the description", () => {
+  it("sets dcfGrowthRate to the resolved growth rate whenever the DCF itself computes", () => {
     const report = scoreTicker(fundamentals("TEST", { epsGrowthPct: 4.0 }));
-    expect(report.dcfGrowthRateClamped).toBe(false);
-    expect(report.dcfGrowthRateUsed).toBeCloseTo(0.04);
-    expect(report.dcfGrowthRateRaw).toBeCloseTo(0.04);
+    expect(report.dcfGrowthRate).toBeCloseTo(0.04);
+    expect(report.details.dcfMarginOfSafety).toContain("4.0% per year");
     expect(report.details.dcfMarginOfSafety).not.toContain("Note:");
+  });
+
+  it("flags an extreme resulting growth rate in the DCF description instead of capping it", () => {
+    const report = scoreTicker(fundamentals("LYC", { epsGrowthPct: 5920.3 }));
+    expect(report.dcfGrowthRate).toBeCloseTo(59.203);
+    expect(report.details.dcfMarginOfSafety).toContain("5920.3% annual growth is unusually large");
+  });
+
+  it("sets dcfGrowthRate to null when the DCF itself can't be computed", () => {
+    const report = scoreTicker(fundamentals("TEST", { freeCashFlow: null }));
+    expect(report.dcfGrowthRate).toBeNull();
   });
 
   it("gives an individualized reason (not a generic n/a) when a metric can't be computed", () => {
@@ -106,20 +100,24 @@ describe("scoreTicker", () => {
 });
 
 describe("resolveGrowthRate", () => {
-  it("caps a very large positive trailing growth rate to MAX_GROWTH_RATE", () => {
-    expect(resolveGrowthRate(5920.3)).toBe(MAX_GROWTH_RATE);
+  it("is not clamped: a very large positive trailing growth rate passes straight through", () => {
+    expect(resolveGrowthRate(5920.3)).toBeCloseTo(59.203);
   });
 
-  it("caps a large negative trailing growth rate to MIN_GROWTH_RATE", () => {
-    expect(resolveGrowthRate(-80.0)).toBe(MIN_GROWTH_RATE);
+  it("is not clamped: a large negative trailing growth rate passes straight through", () => {
+    expect(resolveGrowthRate(-80.0)).toBeCloseTo(-0.8);
   });
 
   it("leaves a sane growth rate unchanged", () => {
     expect(resolveGrowthRate(4.0)).toBeCloseTo(0.04);
   });
 
-  it("clamps an explicit override too", () => {
-    expect(resolveGrowthRate(10.0, 0.5)).toBe(MAX_GROWTH_RATE);
+  it("passes an explicit override straight through too", () => {
+    expect(resolveGrowthRate(10.0, 0.5)).toBe(0.5);
+  });
+
+  it("falls back to DEFAULT_GROWTH_RATE when there's no growth figure at all", () => {
+    expect(resolveGrowthRate(null)).toBeCloseTo(0.05);
   });
 });
 

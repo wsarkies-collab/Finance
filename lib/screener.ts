@@ -29,13 +29,9 @@ export interface ValuationReport {
   isBank: boolean;
   dcfValue: number | null;
   dcfMarginOfSafety: number | null;
-  /** The growth-rate assumption actually fed into the DCF, after clamping to
-   * [MIN_GROWTH_RATE, MAX_GROWTH_RATE] — null only when dcfValue itself is null. */
-  dcfGrowthRateUsed: number | null;
-  /** The same assumption before clamping — equal to dcfGrowthRateUsed unless
-   * dcfGrowthRateClamped is true. */
-  dcfGrowthRateRaw: number | null;
-  dcfGrowthRateClamped: boolean;
+  /** The growth-rate assumption actually fed into the DCF — null only when dcfValue itself
+   * is null. See resolveGrowthRate's comment for why this is uncapped. */
+  dcfGrowthRate: number | null;
   grahamValue: number | null;
   grahamMarginOfSafety: number | null;
   peg: number | null;
@@ -115,35 +111,23 @@ function marginOfSafety(fairValue: number | null, price: number | null): number 
   return (fairValue - price) / price;
 }
 
-// Raw trailing EPS growth (yfinance's `earningsGrowth`, typically a single recent-quarter
-// YoY figure) can't be trusted uncapped once it's compounded forward — found via two real
-// failures live on this screen: LYC.AX's 5920% trailing growth produced a DCF value of
-// -$821M/share, and RIO.AX's 46.9% exceeds the DDM's discount rate, making that model's
-// denominator negative. Clamping keeps genuinely different companies at different (bounded)
-// assumptions rather than flattening everyone to one fixed number.
-//
-// MAX_GROWTH_RATE must stay comfortably below the 9% discount rate used elsewhere (dcfValuePerShare's
-// default, PROJECTION_DISCOUNT_RATE), not just under it — growth approaching the discount rate
-// blows the Gordon Growth denominator (r-g) toward zero, producing an enormous but technically
-// "valid" number, which is exactly the failure this cap exists to prevent.
-export const MIN_GROWTH_RATE = -0.1;
-export const MAX_GROWTH_RATE = 0.06;
-
-/** The override if given, else the ticker's own trailing EPS growth if it has one, else
- * DEFAULT_GROWTH_RATE — before the sanity clamp below. Exposed (via scoreTicker's
- * dcfGrowthRateRaw) so the UI can show a ticker's real, unclamped trailing figure alongside
- * the standardized one the DCF actually used. */
-function unclampedGrowthRate(epsGrowthPct: number | null, override?: number | null): number {
-  return override ?? (epsGrowthPct ? epsGrowthPct / 100 : DEFAULT_GROWTH_RATE);
-}
-
-/** Growth-rate assumption used for the (single-point) DCF, clamped to [MIN_GROWTH_RATE,
- * MAX_GROWTH_RATE]. Also the basis for lib/projections.ts's multi-year projections. The clamp
- * applies even to an explicit override — there's no live UI path that relies on bypassing it
- * today, and a DCF this sensitive to its growth input shouldn't accept an unbounded one from
- * any source. */
+/** Growth-rate assumption used for the (single-point) DCF: the override if given, else the
+ * ticker's own trailing annual EPS growth if it has one (see api/fundamentals.py's
+ * _annual_eps_growth_pct — computed from the last two fiscal years' EPS, not yfinance's own
+ * single-quarter earningsGrowth figure), else DEFAULT_GROWTH_RATE. Also the basis for
+ * lib/projections.ts's multi-year projections.
+ *
+ * Deliberately uncapped: this used to clamp to a fixed [-10%, +6%] range because the growth
+ * figure was yfinance's raw quarterly earningsGrowth, which is volatile enough to produce a
+ * nonsensical DCF once compounded (LYC.AX hit 5920% this way). Annual EPS growth is a much
+ * steadier signal, so that blanket cap is no longer the right tool — a company whose prior
+ * fiscal year's EPS was itself near zero can still produce an extreme percentage even
+ * annualized, but that's a real (if unusual) feature of percentage growth off a small base,
+ * not a data-quality problem a cap should paper over. buildDetails() below flags an extreme
+ * resulting growth rate in the DCF's own description instead, so it's visible rather than
+ * silently smoothed away. */
 export function resolveGrowthRate(epsGrowthPct: number | null, override?: number | null): number {
-  return Math.min(MAX_GROWTH_RATE, Math.max(MIN_GROWTH_RATE, unclampedGrowthRate(epsGrowthPct, override)));
+  return override ?? (epsGrowthPct ? epsGrowthPct / 100 : DEFAULT_GROWTH_RATE);
 }
 
 // ---- individualized, per-ticker description formatting ----
@@ -181,9 +165,7 @@ function num(v: number | null, digits = 2): string {
 function buildDetails(
   f: Fundamentals,
   isBank: boolean,
-  growthRaw: number,
-  growthUsed: number,
-  growthClamped: boolean,
+  growth: number,
   dcfValue: number | null,
   dcfMoS: number | null,
   grahamValue: number | null,
@@ -198,15 +180,14 @@ function buildDetails(
 
   if (dcfValue !== null && dcfMoS !== null) {
     let text =
-      `${t}'s free cash flow of ${money(f.freeCashFlow)} is projected forward at ${pct(growthUsed)} per year for ` +
-      `5 years, discounted at 9%, then a terminal value is added and the total divided across ${count(f.sharesOutstanding)} ` +
-      `shares — an estimated fair value of ${money(dcfValue)} per share versus the current price of ${money(f.price)}, ` +
-      `a margin of safety of ${pct(dcfMoS)}.`;
-    if (growthClamped) {
+      `${t}'s free cash flow of ${money(f.freeCashFlow)} is projected forward at ${pct(growth)} per year ` +
+      `(this ticker's own trailing annual EPS growth) for 5 years, discounted at 9%, then a terminal value is ` +
+      `added and the total divided across ${count(f.sharesOutstanding)} shares — an estimated fair value of ` +
+      `${money(dcfValue)} per share versus the current price of ${money(f.price)}, a margin of safety of ${pct(dcfMoS)}.`;
+    if (Math.abs(growth) > 1.0) {
       text +=
-        ` Note: ${t}'s raw trailing earnings growth was ${pct(growthRaw)}, which this app caps to a standardized ` +
-        `${pct(growthUsed)} before feeding it into the DCF — a single quarter's growth figure can't be trusted ` +
-        `compounded over 5 years uncapped.`;
+        ` Note: ${pct(growth)} annual growth is unusually large — likely a swing off a small prior-year EPS base ` +
+        `rather than a sustainable trend — so this DCF value should be treated with real caution.`;
     }
     details.dcfMarginOfSafety = text;
   } else if (f.freeCashFlow === null) {
@@ -229,10 +210,10 @@ function buildDetails(
   if (peg !== null) {
     const growthLooksVolatile = Math.abs(f.epsGrowthPct ?? 0) > 100;
     details.peg =
-      `${t} trades at a trailing P/E of ${num(f.peRatio)} against trailing EPS growth of ${num(f.epsGrowthPct, 1)}% ` +
+      `${t} trades at a trailing P/E of ${num(f.peRatio)} against trailing annual EPS growth of ${num(f.epsGrowthPct, 1)}% ` +
       `— a PEG ratio of ${num(peg)}.` +
       (growthLooksVolatile
-        ? " That growth figure is unusually large (likely a single volatile quarter, not a sustainable trend), so treat this PEG cautiously — it uses the raw reported figure, not the standardized rate the DCF above uses."
+        ? " That growth figure is unusually large — likely a swing off a small prior-year EPS base rather than a sustainable trend — so treat this PEG cautiously, the same as the DCF above."
         : "");
   } else if (!isBank) {
     if (f.peRatio === null) details.peg = `PEG can't be computed for ${t}: no trailing P/E is available.`;
@@ -296,7 +277,6 @@ export function scoreTicker(
   growthRateOverride?: number | null,
 ): ValuationReport {
   const f = fundamentals;
-  const growthRaw = unclampedGrowthRate(f.epsGrowthPct, growthRateOverride);
   const growth = resolveGrowthRate(f.epsGrowthPct, growthRateOverride);
   const isBank = isBankIndustry(f.sector, f.industry);
 
@@ -317,9 +297,7 @@ export function scoreTicker(
     isBank,
     dcfValue,
     dcfMarginOfSafety,
-    dcfGrowthRateUsed: dcfValue !== null ? growth : null,
-    dcfGrowthRateRaw: dcfValue !== null ? growthRaw : null,
-    dcfGrowthRateClamped: dcfValue !== null && Math.abs(growthRaw - growth) > 1e-9,
+    dcfGrowthRate: dcfValue !== null ? growth : null,
     grahamValue,
     grahamMarginOfSafety,
     peg,
@@ -332,21 +310,7 @@ export function scoreTicker(
     dividendYieldPct: f.dividendYield !== null ? f.dividendYield * 100 : null,
     netInterestMarginPct: f.netInterestMargin !== null ? f.netInterestMargin * 100 : null,
     compositeScore: null,
-    details: buildDetails(
-      f,
-      isBank,
-      growthRaw,
-      growth,
-      dcfValue !== null && Math.abs(growthRaw - growth) > 1e-9,
-      dcfValue,
-      dcfMarginOfSafety,
-      grahamValue,
-      grahamMarginOfSafety,
-      peg,
-      evEbitda,
-      fcfY,
-      quality,
-    ),
+    details: buildDetails(f, isBank, growth, dcfValue, dcfMarginOfSafety, grahamValue, grahamMarginOfSafety, peg, evEbitda, fcfY, quality),
   };
 }
 

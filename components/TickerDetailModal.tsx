@@ -100,14 +100,7 @@ export function TickerDetailModal({
     return (
       <div key={metric} className="metric-row">
         <div className="metric-row-header">
-          <strong>
-            {info.label}
-            {metric === "dcfMarginOfSafety" && report.dcfGrowthRateClamped ? (
-              <span className="badge badge-warning" title="This ticker's raw trailing growth rate was capped before being used in the DCF — see the note below.">
-                Growth capped
-              </span>
-            ) : null}
-          </strong>
+          <strong>{info.label}</strong>
           {showBankNa ? (
             <span className="muted bank-na" title="Not a meaningful metric for banks">
               n/a*
