@@ -70,6 +70,38 @@ def _net_interest_margin(t: yf.Ticker) -> float | None:
     return net_interest_income / total_assets
 
 
+def _annual_eps_growth_pct(t: yf.Ticker) -> float | None:
+    """Year-over-year growth between the two most recently completed fiscal years'
+    diluted EPS (falling back to basic EPS), as a percentage.
+
+    Deliberately NOT yfinance's own `earningsGrowth`/`earningsQuarterlyGrowth` info
+    fields — both are single-quarter year-over-year figures, which swing wildly for
+    cyclical or recovering companies (real example: LYC.AX showed 5920% via
+    `earningsGrowth` on a quarter where TTM earnings happened to compare against a
+    near-zero prior-year quarter). A full fiscal year's EPS is a much steadier
+    signal, though a company whose *prior fiscal year* EPS was itself near zero can
+    still produce an extreme percentage here — that's a real, if unusual, feature of
+    percentage growth off a small base, not a data-quality bug this function can fix.
+    """
+    try:
+        income_stmt = t.income_stmt
+    except Exception:
+        return None
+    if income_stmt is None or income_stmt.empty:
+        return None
+    for row_label in ("Diluted EPS", "Basic EPS"):
+        if row_label not in income_stmt.index:
+            continue
+        values = [v for v in income_stmt.loc[row_label].tolist() if v == v]  # drop NaN
+        if len(values) < 2:
+            continue
+        latest, prior = float(values[0]), float(values[1])
+        if prior == 0:
+            continue
+        return (latest - prior) / abs(prior) * 100
+    return None
+
+
 def fetch_fundamentals(ticker: str) -> Fundamentals:
     t = yf.Ticker(ticker)
     info = t.info
@@ -82,9 +114,7 @@ def fetch_fundamentals(ticker: str) -> Fundamentals:
 
     free_cash_flow = info.get("freeCashflow")
 
-    eps_growth_pct = info.get("earningsGrowth")
-    if eps_growth_pct is not None:
-        eps_growth_pct *= 100
+    eps_growth_pct = _annual_eps_growth_pct(t)
 
     sector = info.get("sector")
     industry = info.get("industry")

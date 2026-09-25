@@ -88,7 +88,7 @@ export function FutureProjectionsButton({ reports }: { reports: ValuationReport[
           />
           <p className="muted assumptions-note">
             <strong>Assumptions</strong> — growth rate {(data.assumptions.growthRate * 100).toFixed(1)}%
-            (capped to a sane range — see below), discount rate {(data.assumptions.discountRate * 100).toFixed(0)}%,
+            (this ticker&apos;s own trailing annual EPS growth, uncapped), discount rate {(data.assumptions.discountRate * 100).toFixed(0)}%,
             future P/E held at the current trailing P/E{" "}
             {data.assumptions.peRatio !== null ? `(${data.assumptions.peRatio.toFixed(1)}×)` : "(n/a)"}.
             {data.analystTarget

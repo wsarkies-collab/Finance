@@ -5,20 +5,17 @@
  */
 
 import { dcfValuePerShare } from "./valuation";
-import { MAX_GROWTH_RATE, MIN_GROWTH_RATE, resolveGrowthRate } from "./screener";
+import { resolveGrowthRate } from "./screener";
 import type { Fundamentals } from "./types";
 
 export const PROJECTION_YEARS = 5;
 export const PROJECTION_DISCOUNT_RATE = 0.09; // matches the existing DCF's default
 
-// Re-exported from lib/screener.ts, which now applies this same clamp directly inside
-// resolveGrowthRate (see the comment there) — kept under these names too since that's what
-// callers here (and this file's own tests) already use.
-export const PROJECTION_MIN_GROWTH = MIN_GROWTH_RATE;
-export const PROJECTION_MAX_GROWTH = MAX_GROWTH_RATE;
-
-/** resolveGrowthRate already clamps to [MIN_GROWTH_RATE, MAX_GROWTH_RATE] — this wrapper just
- * gives that value a name specific to the multi-year projection call sites below. */
+/** Growth-rate assumption for the multi-year projections below — resolveGrowthRate's own
+ * (uncapped, see its comment) trailing annual EPS growth. projectDDM's own guard is what
+ * keeps the Gordon Growth Model sane if this ever meets or exceeds PROJECTION_DISCOUNT_RATE:
+ * it returns nulls rather than a nonsense number, which is the correct behavior for a growth
+ * rate the model genuinely can't handle — not something a blanket cap should hide. */
 export function projectionGrowthRate(epsGrowthPct: number | null, override?: number | null): number {
   return resolveGrowthRate(epsGrowthPct, override);
 }
